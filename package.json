@@ -29,17 +29,17 @@
     "react-dom": "19.2.6"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.37.1",
+    "@cloudflare/vite-plugin": "1.57.3",
     "@cloudflare/workers-types": "4.20260515.1",
     "@resvg/resvg-js": "^2.6.2",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
-    "miniflare": "^4.20260515.0",
+    "miniflare": "^5.20260921.0-alpha",
     "tsx": "^4.23.15",
     "typescript": "5.9.3",
     "vite": "8.0.13",
-    "wrangler": "4.92.0"
+    "wrangler": "4.136.3"
   }
 }
