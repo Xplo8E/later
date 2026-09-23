@@ -1,5 +1,7 @@
 # Deploy Later to Cloudflare
 
+For the optional owner-only ChatGPT connector, follow [CONNECTOR.md](CONNECTOR.md). Its separate Access AUD is set as `mcpAccessAudience` in the ignored deployment config; omitting it disables MCP without changing website authentication.
+
 The production hostname is `later.xplo8e.com`. The first deployment completed on 23 September 2026. See [DEPLOYMENT-RUN.md](DEPLOYMENT-RUN.md) for the actual configuration, verification results and remaining checks. The steps below also describe subsequent deployments.
 
 ## 1. Account and database

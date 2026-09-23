@@ -1,5 +1,7 @@
 # Verification record
 
+The latest ChatGPT connector release is in [CONNECTOR.md](CONNECTOR.md): the production build and **32 tests pass**, migration `0002_library_operations.sql` is applied, and Worker `aef41554-2f06-44fb-aedf-f9ba45da99f3` is deployed. Live OAuth discovery, anonymous denial and the disabled workers.dev address were checked. After refreshing the installed connector, ChatGPT's authenticated settings page visibly lists all **eight tools**, including one-call upsert, atomic note append and additive tags. Actual new-tool calls from a conversation, production token lifecycle and a second real identity remain unverified. Earlier five-tool deployment, consent troubleshooting and share evidence are recorded separately.
+
 The original local review below is dated 22 September 2026. A follow-up deployment and verification run on 23 September is recorded in [DEPLOYMENT-RUN.md](DEPLOYMENT-RUN.md). Later has now been published to `https://later.xplo8e.com`; authenticated production and physical-device checks are not yet complete.
 
 The subsequent Android share-target change passes 21 tests and the production build. Its separate evidence and phone acceptance steps are in [SHARING.md](SHARING.md). The owner reported successful Android home-screen installation, but the new share flow has not yet been verified on the physical phone.

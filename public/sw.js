@@ -13,7 +13,7 @@ self.addEventListener('activate', event => {
 });
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
-  if (event.request.mode !== 'navigate' || url.origin !== self.location.origin || url.pathname.startsWith('/api') || url.pathname.startsWith('/cdn-cgi/')) return;
+  if (event.request.mode !== 'navigate' || url.origin !== self.location.origin || url.pathname.startsWith('/api') || url.pathname.startsWith('/mcp') || url.pathname.startsWith('/.well-known/') || url.pathname.startsWith('/cdn-cgi/')) return;
   event.respondWith((async () => {
     try { return await fetch(event.request); }
     catch {

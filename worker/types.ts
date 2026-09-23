@@ -4,6 +4,7 @@ export interface Env {
   APP_ORIGIN: string;
   ACCESS_TEAM_DOMAIN?: string;
   ACCESS_AUD?: string;
+  MCP_ACCESS_AUD?: string;
   OWNER_EMAIL?: string;
   OWNER_NAME?: string;
   OWNER_HANDLE?: string;

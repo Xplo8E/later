@@ -2,7 +2,8 @@ import { DEFAULT_SETTINGS, type Session } from '../shared/types';
 import type { Env } from './types';
 import { HttpError, json, jsonBody } from './http';
 import { getLink, getSettings, listLinks, patchLink, selectLinks, takeLimit, toLink, updateSettings } from './db';
-import { inferKind, parsePatch, parseSettings, savedUrl, text } from './validation';
+import { parsePatch, parseSettings, savedUrl } from './validation';
+import { captureLink } from './library';
 import { enrichLink, fetchMetadata } from './metadata';
 import { requireSameOrigin } from './auth';
 
@@ -28,22 +29,7 @@ export async function handleApi(request: Request, env: Env, ctx: Pick<ExecutionC
   }
   if ((path === '/api/links' || path === '/api/search') && method === 'GET') return json(await listLinks(env.DB, url.searchParams));
   if (path === '/api/links' && method === 'POST') {
-    const body = await jsonBody(request);
-    if (Object.keys(body).some(key => !['url', 'note'].includes(key))) throw new HttpError(400, 'Unsupported capture fields.');
-    const parsed = savedUrl(body.url);
-    const note = body.note === undefined ? '' : text(body.note, 'Note', 4000);
-    const settings = await getSettings(env.DB);
-    const id = crypto.randomUUID();
-    const now = new Date().toISOString();
-    const result = await env.DB.prepare(`INSERT INTO links(id,url,normalized_url,title,domain,kind,note,status,saved_at,updated_at,metadata_status,metadata_started_at)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(normalized_url) DO NOTHING RETURNING id`).bind(id, parsed.href, parsed.href, parsed.hostname, parsed.hostname, inferKind(parsed), note, settings.defaultStatus, now, now, settings.fetchMetadata ? 'pending' : 'skipped', settings.fetchMetadata ? now : null).first<{ id: string }>();
-    if (!result) {
-      const existing = await env.DB.prepare('SELECT id FROM links WHERE normalized_url = ?').bind(parsed.href).first<{ id: string }>();
-      throw new HttpError(409, 'This link is already in your library.', { existingId: existing?.id });
-    }
-    const link = await getLink(env.DB, id);
-    if (settings.fetchMetadata) ctx.waitUntil(enrichLink(env.DB, id, parsed.href, 0, settings).catch(() => undefined));
-    return json(link, 201);
+    return json(await captureLink(env, ctx, await jsonBody(request)), 201);
   }
   if (path === '/api/tags' && method === 'GET') {
     const tags = await env.DB.prepare('SELECT name FROM tags ORDER BY name COLLATE NOCASE').all<{ name: string }>();

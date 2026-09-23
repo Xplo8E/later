@@ -1,6 +1,7 @@
 import type { Env } from './types';
 import { authenticate } from './auth';
 import { handleApi } from './api';
+import { handleMcp } from './mcp';
 import { HttpError, json, securityHeaders } from './http';
 
 export default {
@@ -9,6 +10,7 @@ export default {
     const privateRoute = path === '/api' || path.startsWith('/api/') || path === '/app' || path.startsWith('/app/');
     const development = import.meta.env?.DEV === true;
     try {
+      if (path === '/mcp' || path.startsWith('/mcp/')) return securityHeaders(await handleMcp(request, env, ctx), development);
       if (privateRoute) {
         const session = await authenticate(request, env);
         if (path === '/api' || path.startsWith('/api/')) return securityHeaders(await handleApi(request, env, ctx, session), development);

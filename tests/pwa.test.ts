@@ -56,6 +56,9 @@ test('service worker caches only the generic offline page and passes private req
   };
   assert.equal(request('/api/links', 'cors'), undefined);
   assert.equal(request('/api/export', 'navigate'), undefined);
+  assert.equal(request('/mcp', 'cors'), undefined);
+  assert.equal(request('/mcp', 'navigate'), undefined);
+  assert.equal(request('/.well-known/oauth-authorization-server', 'navigate'), undefined);
   assert.equal(request('/cdn-cgi/access/logout', 'navigate'), undefined);
   assert.equal(await (await request('/app/inbox', 'navigate'))?.text(), 'private network response');
   assert.equal(await (await request('/app/share?text=private-shared-note', 'navigate'))?.text(), 'private network response');

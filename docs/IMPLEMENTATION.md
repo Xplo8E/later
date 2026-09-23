@@ -61,3 +61,9 @@ Android sharing is implemented as a protected, non-mutating GET draft route with
 - Git origin: `https://github.com/Xplo8E/later.git`.
 
 These values have been configured for the first deployment. OAuth credentials remain in Cloudflare, outside the source tree.
+
+## ChatGPT connector, 2026-09-23
+
+`worker/mcp.ts` adds a stateless MCP endpoint with eight bounded library tools. `worker/library.ts` shares basic capture semantics with the browser API. `worker/library-mutations.ts` implements one-call upsert, atomic note appending and additive tags. Migration `0002_library_operations.sql` stores durable idempotency receipts; each receipt and its edits share a D1 transaction. Duplicate upserts preserve existing items unless merging is explicitly requested, and merging never changes existing title or status. No new dependencies or frontend changes are needed for these tools.
+
+MCP verifies a separate owner-only Access audience; browser authentication and mutation Origin checks are unchanged. No deletion or settings tool is exposed. Deployment accepts an optional, distinct `mcpAccessAudience` and checks the compiled value. See [CONNECTOR.md](CONNECTOR.md) for tool contracts, dependency choices and verification limits.
