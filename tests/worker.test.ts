@@ -13,9 +13,11 @@ test('compiled Worker authenticates and extracts bounded HTML metadata without o
   let release: (() => void) | undefined;
   let gate: Promise<void> | undefined;
   const visited: string[] = [];
+  const assetRequests: string[] = [];
   const mf = new Miniflare({
     modules: true, scriptPath: 'dist/later/index.js', compatibilityDate: '2026-05-15', d1Databases: ['DB'],
     bindings: { APP_ORIGIN: origin, ACCESS_TEAM_DOMAIN: issuer, ACCESS_AUD: 'later-test', OWNER_EMAIL: 'owner@example.com' },
+    serviceBindings: { ASSETS: async request => { assetRequests.push(request.url); return new WorkerResponse('<h1>Later app</h1>', { headers: { 'Content-Type': 'text/html' } }); } },
     outboundService: async request => {
       const url = new URL(request.url); visited.push(url.hostname);
       if (url.hostname === 'test-team.cloudflareaccess.com') return WorkerResponse.json({ keys: [jwk] });
@@ -31,6 +33,17 @@ test('compiled Worker authenticates and extracts bounded HTML metadata without o
   await db.batch((await readFile('migrations/0001_initial.sql', 'utf8')).split(';').map(sql => sql.trim()).filter(Boolean).map(sql => db.prepare(sql)));
   const call = (path: string, method = 'GET', body?: unknown) => mf.dispatchFetch(origin + path, { method, headers: { 'Cf-Access-Jwt-Assertion': token, Origin: origin, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
   assert.equal((await call('/api/session')).status, 200);
+  const sharedPath = '/app/share?text=https%3A%2F%2Fexample.com%2Farticle&title=Read%20later';
+  const shared = await call(sharedPath);
+  assert.equal(shared.status, 200);
+  assert.equal(shared.headers.get('Cache-Control'), 'no-store');
+  assert.deepEqual(assetRequests, [origin + sharedPath]);
+  assert.equal((await (await call('/api/links')).json() as { total: number }).total, 0, 'Opening a share must not save it');
+  for (const identity of [{ email: 'other@example.com', expiry: '5m' }, { email: 'owner@example.com', expiry: 1 }]) {
+    const denied = await new SignJWT({ email: identity.email }).setProtectedHeader({ alg: 'RS256', kid: 'integration' }).setSubject('test').setIssuedAt().setExpirationTime(identity.expiry).setIssuer(issuer).setAudience('later-test').sign(privateKey);
+    assert.equal((await mf.dispatchFetch(origin + sharedPath, { headers: { 'Cf-Access-Jwt-Assertion': denied } })).status, 401);
+  }
+  assert.equal(assetRequests.length, 1, 'Expired and non-owner sessions must not reach the share form');
   const preview = await call('/api/preview', 'POST', { url: 'https://metadata.example.com/article' });
   assert.equal(preview.status, 200, `${await preview.clone().text()} | visited: ${visited.join(', ')}`);
   assert.deepEqual(await preview.json(), { title: 'XPC & XNU notes', description: 'A small useful reference.', domain: 'metadata.example.com', imageUrl: null, kind: 'article' });

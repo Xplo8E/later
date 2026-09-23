@@ -35,8 +35,15 @@ The seed command always uses local D1. The examples are review fixtures with rea
 - A consistent Modernist editorial grid, Inter typography, thin rules, square controls, and restrained motion.
 - Responsive phone navigation, full-width small-screen drawers, touch targets and safe-area spacing.
 - Android PWA manifest, standalone launch, regular and maskable app icons, an optional native install prompt and an offline fallback page.
+- Android share-menu target: share a link to Later, authenticate as the owner, review the URL and optional note, then Save.
 
 Saving does not wait for metadata. A blocked or unavailable external website leaves the saved URL and note intact. Suggested tags use a small deterministic keyword list; there is no AI service.
+
+## Share to Later on Android
+
+Install Later through Chrome, then use another app's Share action and choose Later. The protected `/app/share` page prefills a URL and available title/text; it never saves automatically. Your GitHub owner session is required. An expired session requires sign-in before saving. Duplicate links show a link to the existing item without overwriting its note.
+
+An older installation may need time to update its manifest. If Later is missing from the share sheet, reopen it online; if necessary, uninstall the installed app/shortcut and install again through Chrome. Your saved library remains in D1, but reinstalling can require sign-in again. A bookmark-only home-screen shortcut is not enough for OS share-target registration. See [share verification](docs/SHARING.md).
 
 ## Verify
 

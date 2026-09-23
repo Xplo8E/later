@@ -42,13 +42,15 @@ Local development authentication is permitted only in the development build with
 
 ## September 23 continuation
 
+Android sharing is implemented as a protected, non-mutating GET draft route with explicit authenticated Save. The existing capture form, duplicate handling and API are reused. See [SHARING.md](SHARING.md) for the flow, privacy boundaries and verification.
+
 - Added a shared, bounded API transport with no-store requests, explicit Access-redirect handling and session-expiry events. Authentication denial clears private UI state; connectivity errors remain distinct.
 - Guarded pagination against stale responses and isolated detail-editor state between items. Close stays reachable while a mutation is pending.
 - Hardened deployment checks for the intended account/database, owner, audience, disabled alternate URLs and removal of local authorization.
 - Added transport and rediscovery coverage. The production build and all 18 tests pass.
 - Added `scripts/smoke-local.mjs` for disposable local API and real-site metadata checks. It refuses non-local sessions and removes only the items it creates.
 - Configured Cloudflare Access, GitHub and D1, and deployed the Worker. See [DEPLOYMENT-RUN.md](DEPLOYMENT-RUN.md) for evidence and unverified flows.
-- Set Git origin to `https://github.com/Xplo8E/later.git`. No commit or push was performed; the owner will push.
+- Set Git origin to `https://github.com/Xplo8E/later.git`. The initial source was committed as `40317ad` at the owner's request. The owner handles pushing.
 
 ## External configuration used by deployment
 

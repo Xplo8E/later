@@ -26,7 +26,7 @@ test('Access verifies signatures and binds issuer, audience, expiry and owner', 
 test('production build ignores LOCAL_DEV and refuses unauthenticated requests', async t => {
   const mf = new Miniflare({ modules: true, scriptPath: 'dist/later/index.js', compatibilityDate: '2026-05-15', bindings: { ...config, LOCAL_DEV: 'true' } });
   t.after(() => mf.dispose());
-  for (const path of ['/api/links', '/api/export', '/app', '/app/inbox']) {
+  for (const path of ['/api/links', '/api/export', '/app', '/app/inbox', '/app/share?url=https%3A%2F%2Fexample.com', '/app/share/']) {
     const response = await mf.dispatchFetch(`https://later.xplo8e.com${path}`);
     assert.equal(response.status, 401);
     assert.equal(response.headers.get('Cache-Control'), 'no-store');

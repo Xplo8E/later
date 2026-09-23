@@ -7,20 +7,22 @@ import { api } from './lib/api';
 import { SESSION_EXPIRED } from './lib/transport';
 import { useInstallPrompt } from './lib/useInstallPrompt';
 import { groupLinks } from './lib/format';
+import { isSharePath, readSharedDraft, shareSignInPath } from './lib/share';
 import CaptureInput from './components/CaptureInput';
 import SavedItemRow from './components/SavedItemRow';
 import DetailDrawer from './components/DetailDrawer';
 import Rediscover from './components/Rediscover';
 import { Confirm, Empty } from './components/primitives';
 
-type Page = 'inbox' | 'library' | 'finished' | 'rediscover' | 'search' | 'settings';
-const pageLabels: Record<Page, string> = { inbox: 'Inbox', library: 'Library', finished: 'Finished', rediscover: 'Rediscover', search: 'Search', settings: 'Settings' };
+type Page = 'inbox' | 'library' | 'finished' | 'rediscover' | 'search' | 'settings' | 'share';
+const pageLabels: Record<Page, string> = { inbox: 'Inbox', library: 'Library', finished: 'Finished', rediscover: 'Rediscover', search: 'Search', settings: 'Settings', share: 'Save shared link' };
 const zeroCounts: LinkCounts = { inbox: 0, library: 0, finished: 0, archived: 0 };
 const messageOf = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong. Try again.';
 
 export default function App() {
   const installation = useInstallPrompt();
   const [path, setPath] = useState(location.pathname);
+  const [sharedDraft, setSharedDraft] = useState(() => readSharedDraft(location));
   const rawPage = path.split('/')[2] || 'inbox';
   const page: Page = rawPage in pageLabels ? rawPage as Page : 'inbox';
   const inApp = path === '/app' || path.startsWith('/app/');
@@ -56,11 +58,13 @@ export default function App() {
 
   const navigate = useCallback((next: Page) => {
     const url = `/app/${next}`;
-    if (location.pathname !== url) history.pushState(null, '', url);
+    if (isSharePath(location.pathname)) history.replaceState(null, '', url);
+    else if (location.pathname !== url) history.pushState(null, '', url);
+    setSharedDraft(null);
     setPath(url); setQuery(''); setActiveTag(''); setArchived(false); setSelected(null); setMobileNav(false); setItems([]); setCursor(null); setLoading(true); setRevision(value => value + 1);
     window.scrollTo(0, 0);
   }, []);
-  useEffect(() => { const pop = () => { setPath(location.pathname); setQuery(''); setActiveTag(''); setArchived(false); setSelected(null); setMobileNav(false); setItems([]); setCursor(null); setLoading(true); setRevision(value => value + 1); }; addEventListener('popstate', pop); return () => removeEventListener('popstate', pop); }, []);
+  useEffect(() => { const pop = () => { setPath(location.pathname); setSharedDraft(readSharedDraft(location)); setQuery(''); setActiveTag(''); setArchived(false); setSelected(null); setMobileNav(false); setItems([]); setCursor(null); setLoading(true); setRevision(value => value + 1); }; addEventListener('popstate', pop); return () => removeEventListener('popstate', pop); }, []);
   useEffect(() => { document.title = inApp ? `${pageLabels[page]} · Later` : 'Later. Your personal internet library.'; }, [inApp, page]);
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(null), 5000); return () => clearTimeout(timer); }, [toast]);
   useEffect(() => {
@@ -179,12 +183,18 @@ export default function App() {
       <div className="sidebar-footer"><a className={page === 'settings' ? 'current' : ''} href="/app/settings" onClick={event => { event.preventDefault(); navigate('settings'); }}>Settings</a><a href="https://xplo8e.com" target="_blank" rel="noopener noreferrer">xplo8e.com ↗</a><button className="account-chip" onClick={() => navigate('settings')}><span className="avatar">X</span><span>{session?.handle || 'Xplo8E'}</span></button></div>
     </aside>
     <main id="main-content" inert={mobileNav} className={`main-content page-${page} ${page === 'inbox' ? 'with-rail' : ''}`}>
-      {authError ? <div className="content-column"><Empty title="Your library is private.">{authError}</Empty><a className="button primary" href="/app/">Sign in again →</a></div> : !session ? <div className="content-column loading-page" role="status">Opening your library…</div> : <>
+      {authError ? <div className="content-column"><Empty title="Your library is private.">{authError}</Empty><a className="button primary" href={sharedDraft ? shareSignInPath(sharedDraft) : '/app/'}>Sign in again →</a></div> : !session ? <div className="content-column loading-page" role="status">Opening your library…</div> : <>
         <div className={`content-column ${page === 'search' ? 'search-column' : ''} ${page === 'rediscover' ? 'wide-column' : ''}`}>
           {page !== 'search' && <header className="page-heading"><div className="page-title"><h1>{pageLabels[page]}</h1>{page in counts && <span>{counts[page as keyof LinkCounts]}</span>}</div>
             {page === 'inbox' && <p>Things you saved but haven’t dealt with yet.</p>}{page === 'finished' && <p>Things you’ve already explored.</p>}{page === 'rediscover' && <p>No feed. No guilt. Just things worth seeing again.</p>}
+            {page === 'share' && <p>Review the link, add a little context, then save. Nothing is saved until you choose Save.</p>}
           </header>}
           {page === 'inbox' && <CaptureInput fetchMetadata={settings.fetchMetadata} defaultStatus={settings.defaultStatus} onSaved={link => { notify(`Saved to ${link.status === 'library' ? 'Library' : 'Inbox'}.`); refresh(); }} onDuplicate={id => { void api.get(id).then(select).catch(error => notify(messageOf(error), true)); }} />}
+          {page === 'share' && <>
+            {sharedDraft?.notice && <p className="share-notice" role="status">{sharedDraft.notice}</p>}
+            <CaptureInput key={path} initialDraft={sharedDraft || undefined} onDraftChange={draft => setSharedDraft(current => ({ ...draft, notice: current?.notice || '' }))} onCancel={() => navigate('inbox')} fetchMetadata={settings.fetchMetadata} defaultStatus={settings.defaultStatus} onSaved={link => { navigate(link.status === 'library' ? 'library' : 'inbox'); notify(`Saved to ${link.status === 'library' ? 'Library' : 'Inbox'}.`); }} onDuplicate={id => { void api.get(id).then(select).catch(error => notify(messageOf(error), true)); }} />
+            {!sharedDraft?.url && <button className="text-button share-cancel" onClick={() => navigate('inbox')}>Back to Inbox</button>}
+          </>}
           {(page === 'search' || page === 'library') && <div className={`search-box ${page === 'search' ? 'large-search' : ''}`}><Search aria-hidden="true" /><input ref={searchInput} aria-label={page === 'search' ? 'Search all saved links' : 'Search library'} value={query} onChange={event => setQuery(event.target.value)} placeholder={page === 'search' ? 'Search your library…' : 'Search library…'} maxLength={200} /><kbd>{navigator.platform.includes('Mac') ? '⌘' : 'Ctrl+'}K</kbd>{query && <button className="icon-button" aria-label="Clear search" onClick={() => setQuery('')}><X aria-hidden="true" /></button>}</div>}
           {page === 'library' && <><div className="filter-bar" aria-label="Filter by tag"><button className={`tag filter ${!activeTag ? 'active' : ''}`} aria-pressed={!activeTag} onClick={() => setActiveTag('')}>All</button>{tags.map(tag => <button key={tag} className={`tag filter ${activeTag === tag ? 'active' : ''}`} aria-pressed={activeTag === tag} onClick={() => setActiveTag(tag)}>{tag}</button>)}</div><div className="list-toolbar"><span>{total} {total === 1 ? 'item' : 'items'}</span><label><input type="checkbox" checked={archived} onChange={event => setArchived(event.target.checked)} /> Archived{counts.archived ? ` (${counts.archived})` : ''}</label></div></>}
           {page === 'search' && <p className="eyebrow search-results-label">{query ? `${total} ${total === 1 ? 'result' : 'results'}` : 'Recently saved'}</p>}

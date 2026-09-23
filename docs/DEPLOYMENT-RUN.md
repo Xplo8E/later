@@ -4,7 +4,7 @@
 
 - URL: https://later.xplo8e.com
 - Repository: `/Volumes/vinay-ssd/repos/later`, extracted from the supplied source archive and initialized as a Git repository.
-- Origin: `https://github.com/Xplo8E/later.git`. No commit or push performed.
+- Origin: `https://github.com/Xplo8E/later.git`. Initial source committed as `40317ad` at the owner's request. No push performed by Codex.
 - Cloudflare account: `e9214373e8991f269dddf47461c0d5f8`.
 - Worker: `later`, version `f8bdf563-050b-4194-8a56-608d7dea34b4`, deployed at 2026-09-23 01:30 UTC.
 - D1: `later`, ID `d1cd5095-ec95-4205-9f17-21d95f7017bd`, region APAC.
@@ -36,11 +36,14 @@ Immediately after deployment, the Mac and Brave reported the hostname unresolved
 
 ## Still unverified
 
-- Real GitHub owner sign-in and the exact identity returned to the Worker.
-- Real second-identity denial, logout, session expiry and reauthentication.
-- Authenticated production CRUD, duplicate warnings, notes/tags/title editing, search, lifecycle, rediscovery, export, reload persistence and deployed metadata fetching.
+- Real second-identity denial and natural 24-hour session expiry. Worker tests cover these identities/expiry cases; the share follow-up below verifies live logout, session invalidation and reauthentication.
+- Full production title/tag editing, search, lifecycle, rediscovery and export. The share follow-up verifies capture, note editing before save, duplicates, deletion, reload persistence and example.com metadata.
 - Runtime denial on preview URLs, beyond the deployed configuration setting.
 - The full reduced-height editor/menu/confirmation follow-up after these changes. Earlier source documentation contains September 22 viewport evidence and is not new evidence from this run.
 - Physical Android Chrome installation, standalone launch, session persistence, keyboard, rotation, external links and offline/reconnect. `adb devices -l` showed no connected device.
 
 The service-worker privacy tests pass: only the generic offline page is cached, not private notes, documents, authentication or API responses. Physical-device offline behavior remains untested.
+
+## Share-target follow-up
+
+Version `5819c6d9-f6bc-46c8-a7f6-305f65d79c9e` adds the authenticated Android share draft. Build and all 21 tests passed during deployment. Normal DNS resolution now works on the Mac. Live authenticated save/reload/duplicate checks, logout and draft-preserving reauthentication passed; disposable production data was removed. See [SHARING.md](SHARING.md) for exact evidence and remaining Android checks. The owner reported home-screen installation worked on their phone before this update; Codex has not tested the phone's new share-menu entry.

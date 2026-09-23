@@ -9,6 +9,8 @@ test('install manifest contains standalone launch, valid icons, and no review bu
   assert.equal(manifest.start_url, '/app/');
   assert.equal(manifest.scope, '/');
   assert.equal(manifest.prefer_related_applications, false);
+  assert.deepEqual(manifest.share_target, { action: '/app/share', method: 'GET', params: { title: 'title', text: 'text', url: 'url' } });
+  assert.deepEqual(JSON.parse(await readFile('dist/client/manifest.webmanifest', 'utf8')).share_target, manifest.share_target);
   for (const size of [192, 512]) {
     const icon = manifest.icons.find((icon: { sizes: string; purpose: string }) => icon.sizes === `${size}x${size}` && icon.purpose === 'any');
     assert.ok(icon);
@@ -56,9 +58,11 @@ test('service worker caches only the generic offline page and passes private req
   assert.equal(request('/api/export', 'navigate'), undefined);
   assert.equal(request('/cdn-cgi/access/logout', 'navigate'), undefined);
   assert.equal(await (await request('/app/inbox', 'navigate'))?.text(), 'private network response');
+  assert.equal(await (await request('/app/share?text=private-shared-note', 'navigate'))?.text(), 'private network response');
   assert.deepEqual(matched, []);
   offline = true;
   assert.equal(await (await request('/app/inbox', 'navigate'))?.text(), 'offline page');
-  assert.deepEqual(matched, ['/offline.html']);
+  assert.equal(await (await request('/app/share?text=private-shared-note', 'navigate'))?.text(), 'offline page');
+  assert.deepEqual(matched, ['/offline.html', '/offline.html']);
   assert.deepEqual(added, ['/offline.html']);
 });

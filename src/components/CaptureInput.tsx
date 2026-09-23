@@ -3,10 +3,23 @@ import { Link2 } from 'lucide-react';
 import { api, ApiError, type PreviewResult } from '../lib/api';
 import { validUrl } from '../lib/format';
 import type { SavedLink } from '../../shared/types';
+import type { CaptureDraft } from '../lib/share';
 
-export default function CaptureInput({ fetchMetadata, defaultStatus, onSaved, onDuplicate }: { fetchMetadata: boolean; defaultStatus: 'inbox' | 'library'; onSaved: (link: SavedLink) => void; onDuplicate: (id: string) => void }) {
-  const [url, setUrl] = useState('');
-  const [note, setNote] = useState('');
+interface CaptureInputProps {
+  fetchMetadata: boolean;
+  defaultStatus: 'inbox' | 'library';
+  onSaved: (link: SavedLink) => void;
+  onDuplicate: (id: string) => void;
+  /** Initial shared content, mounted only after authentication. */
+  initialDraft?: CaptureDraft;
+  /** Retain edits in memory if the session expires during capture. */
+  onDraftChange?: (draft: CaptureDraft) => void;
+  onCancel?: () => void;
+}
+
+export default function CaptureInput({ fetchMetadata, defaultStatus, onSaved, onDuplicate, initialDraft, onDraftChange, onCancel }: CaptureInputProps) {
+  const [url, setUrl] = useState(initialDraft?.url || '');
+  const [note, setNote] = useState(initialDraft?.note || '');
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
   const [error, setError] = useState('');
@@ -37,14 +50,14 @@ export default function CaptureInput({ fetchMetadata, defaultStatus, onSaved, on
   };
   return <form className={`capture ${expanded ? 'expanded' : ''}`} onSubmit={event => void save(event)} noValidate>
     <div className="capture-line"><span className="capture-symbol" aria-hidden="true"><Link2 /></span>
-      <input ref={input} aria-label="URL to save" aria-describedby={error ? 'capture-error' : undefined} type="url" autoComplete="off" spellCheck={false} placeholder="Paste a URL…" value={url} maxLength={4096} disabled={saving} onChange={event => setUrl(event.target.value)} />
+      <input ref={input} aria-label="URL to save" aria-describedby={error ? 'capture-error' : undefined} type="url" autoComplete="off" spellCheck={false} placeholder="Paste a URL…" value={url} maxLength={4096} disabled={saving} onChange={event => { setUrl(event.target.value); onDraftChange?.({ url: event.target.value, note }); }} />
       {!expanded && <button type="submit" className="button primary small" disabled={saving}>Save →</button>}
     </div>
     {expanded && <div className="capture-details">
       <div className="capture-preview" aria-live="polite"><strong>{preview?.title || new URL(url.trim()).hostname}</strong><span>{previewState === 'loading' ? 'Fetching preview…' : previewState === 'failed' ? 'Preview unavailable. You can still save this link.' : preview?.domain || 'Ready to save.'}</span></div>
       <label className="field-label" htmlFor="capture-note">Why did you save this? <span>Optional</span></label>
-      <textarea id="capture-note" placeholder="A little context for later…" value={note} maxLength={4000} onChange={event => setNote(event.target.value)} disabled={saving} rows={2} />
-      <div className="capture-actions"><button type="button" className="text-button" onClick={reset} disabled={saving}>Cancel</button><button type="submit" className="button primary" disabled={saving}>{saving ? 'Saving…' : `Save to ${defaultStatus === 'library' ? 'Library' : 'Inbox'} →`}</button></div>
+      <textarea id="capture-note" placeholder="A little context for later…" value={note} maxLength={4000} onChange={event => { setNote(event.target.value); onDraftChange?.({ url, note: event.target.value }); }} disabled={saving} rows={2} />
+      <div className="capture-actions"><button type="button" className="text-button" onClick={onCancel || reset} disabled={saving}>Cancel</button><button type="submit" className="button primary" disabled={saving}>{saving ? 'Saving…' : `Save to ${defaultStatus === 'library' ? 'Library' : 'Inbox'} →`}</button></div>
     </div>}
     {error && <div className="capture-error" id="capture-error" role="alert">{error}{duplicateId && <button type="button" className="text-button" onClick={() => onDuplicate(duplicateId)}>View saved link →</button>}</div>}
   </form>;

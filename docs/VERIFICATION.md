@@ -2,6 +2,8 @@
 
 The original local review below is dated 22 September 2026. A follow-up deployment and verification run on 23 September is recorded in [DEPLOYMENT-RUN.md](DEPLOYMENT-RUN.md). Later has now been published to `https://later.xplo8e.com`; authenticated production and physical-device checks are not yet complete.
 
+The subsequent Android share-target change passes 21 tests and the production build. Its separate evidence and phone acceptance steps are in [SHARING.md](SHARING.md). The owner reported successful Android home-screen installation, but the new share flow has not yet been verified on the physical phone.
+
 ## Build and automated checks
 
 - `npm run build`: passes TypeScript and the client/Worker production builds.

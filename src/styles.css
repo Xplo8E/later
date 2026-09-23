@@ -75,6 +75,8 @@ textarea { width: 100%; padding: 12px 14px; resize: vertical; border: 1px solid 
 .capture-actions, .dialog-actions { display: flex; align-items: center; justify-content: flex-end; gap: 20px; margin-top: 15px; }
 .capture-error { border-top: 1px solid var(--border); color: var(--danger); padding: 12px 20px; font-size: 13px; }
 .capture-error > button { display: block; margin-top: 6px; }
+.share-notice { color: var(--muted); font-size: 14px; margin-bottom: 16px; overflow-wrap: anywhere; }
+.share-cancel { margin-top: 16px; }
 .date-group { margin-top: 30px; }
 .date-group + .date-group { margin-top: 40px; }
 .date-group > h2 { padding-bottom: 10px; }
