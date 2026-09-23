@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "Later",
+  "short_name": "Later",
+  "description": "Your private personal internet library. Save links, add a little context, and rediscover them later.",
+  "lang": "en",
+  "start_url": "/app/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#111414",
+  "theme_color": "#111414",
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "/icons/later-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/later-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/later-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Inbox", "url": "/app/inbox", "icons": [{ "src": "/icons/later-192.png", "sizes": "192x192" }] },
+    { "name": "Search your library", "short_name": "Search", "url": "/app/search", "icons": [{ "src": "/icons/later-192.png", "sizes": "192x192" }] }
+  ]
+}

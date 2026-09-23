@@ -1,0 +1,14 @@
+node_modules/
+.DS_Store
+dist/
+.wrangler/
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
+.sites-runtime/
+*.tsbuildinfo
+wrangler.production.json
+deployment.config.json
+qa/
+*.log
