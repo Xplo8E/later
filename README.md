@@ -99,3 +99,10 @@ External metadata requests are bounded, redirects and DNS answers are checked, a
 See [docs/VERIFICATION.md](docs/VERIFICATION.md) for the current evidence and the checks still needed after deployment.
 
 The private ChatGPT MCP connector provides search, read, save, edit and reversible lifecycle tools, plus one-call capture with tags/status, atomic note appending and additive tags. It uses separate owner-only authentication and exposes no permanent deletion. See [docs/CONNECTOR.md](docs/CONNECTOR.md) for request-ID retry semantics, configuration and verification status. It stays disabled until a separate MCP Access audience is configured.
+
+## License
+
+Copyright (C) 2026 Vinay Kumar Rasala (Xplo8E).
+
+Licensed under the GNU Affero General Public License v3.0 or later.
+See [LICENSE](LICENSE).
