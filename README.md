@@ -1,8 +1,42 @@
-# Later
+<h1 align="center">Later</h1>
 
-A private, single-owner internet library. Save a URL with a note, organize it when convenient, and rediscover older unfinished links.
+<p align="center">
+  <a href="https://github.com/Xplo8E/later/releases/latest"><img src="https://img.shields.io/github/v/release/Xplo8E/later?style=flat-square" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0--or--later-blue?style=flat-square" alt="License: AGPL-3.0-or-later"></a>
+</p>
 
-Built with React, TypeScript, Vite, Cloudflare Workers, D1, and Cloudflare Access with GitHub. Deploy on your own HTTPS subdomain using one local configuration file.
+<p align="center">A private, single-owner internet library.</p>
+
+Save a URL with a note, organize it when convenient, and rediscover older unfinished links.
+
+## Screenshots
+
+<table>
+  <thead>
+    <tr>
+      <th align="center" width="70%">Desktop</th>
+      <th align="center" width="30%">Mobile</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="70%">
+        <a href="docs/assets/screenshots/desktop-inbox-midnight.png"><img src="docs/assets/screenshots/desktop-inbox-midnight.png" alt="Later inbox in the Midnight theme" width="560"></a>
+      </td>
+      <td align="center" valign="top" width="30%">
+        <a href="docs/assets/screenshots/mobile-inbox-mint.png"><img src="docs/assets/screenshots/mobile-inbox-mint.png" alt="Later mobile inbox in the Mint theme" width="220"></a>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" valign="top" width="70%">
+        <a href="docs/assets/screenshots/desktop-inbox-light.png"><img src="docs/assets/screenshots/desktop-inbox-light.png" alt="Later inbox in the Light theme" width="560"></a>
+      </td>
+      <td align="center" valign="top" width="30%">
+        <a href="docs/assets/screenshots/mobile-note-sepia.png"><img src="docs/assets/screenshots/mobile-note-sepia.png" alt="Later compact mobile note sheet in the Sepia theme" width="220"></a>
+      </td>
+    </tr>
+  </tbody>
+</table>
 
 ## Run locally
 
@@ -25,25 +59,21 @@ npm run db:seed
 
 The seed command always uses local D1. The examples are review fixtures with real public URLs, not an imported personal library.
 
-## Included
+## Features
 
-- Inbox, Library, Finished, Rediscover, Search, Settings, login, and the item detail drawer.
-- URL capture, optional notes, duplicate detection, independent metadata enrichment and retry.
-- Editable title, note and tags; lifecycle actions; accessible confirmations; JSON export.
-- Search across titles, sources, notes and tags, tag filters and paginated results.
-- Six reading palettes: Light, Sepia, Mint, Dark, Midnight and Cocoa, plus device appearance.
-- A consistent Modernist editorial grid, Inter typography, thin rules, square controls, and restrained motion.
-- Responsive phone navigation, full-width small-screen drawers, touch targets and safe-area spacing.
-- Android PWA manifest, standalone launch, regular and maskable app icons, an optional native install prompt and an offline fallback page.
-- Android share-menu target: share a link to Later, authenticate as the owner, review the URL and optional note, then Save.
+- Save URLs with notes, duplicate detection, and automatic metadata fetching with retry.
+- Edit titles and tags, move links through Inbox, Library and Finished, and rediscover unread items.
+- Search titles, sources, notes and tags; filter by tag; export your library as JSON.
+- Six palettes: Light, Sepia, Mint, Dark, Midnight and Cocoa, plus device appearance. Inter typography, thin rules, and compact mobile navigation.
+- Install on Android for standalone launch and share-menu capture. Review shared links before saving; owner sign-in is required.
 
 Saving does not wait for metadata. A blocked or unavailable external website leaves the saved URL and note intact. Suggested tags use a small deterministic keyword list; there is no AI service.
 
 ## Share to Later on Android
 
-Install Later through Chrome, then use another app's Share action and choose Later. The protected `/app/share` page prefills a URL and available title/text; it never saves automatically. Your GitHub owner session is required. An expired session requires sign-in before saving. Duplicate links show a link to the existing item without overwriting its note.
+Install Later through Chrome, then share a link from another app and choose Later. Sign in as the owner, review the URL and note, and save. Nothing saves automatically, and duplicates leave existing notes intact.
 
-An older installation may need time to update its manifest. If Later is missing from the share sheet, reopen it online; if necessary, uninstall the installed app/shortcut and install again through Chrome. Your saved library remains in D1, but reinstalling can require sign-in again. A bookmark-only home-screen shortcut is not enough for OS share-target registration. See [share verification](docs/SHARING.md).
+If Later is missing from the share menu, see the [Android setup and verification guide](docs/SHARING.md). A bookmark-only shortcut does not register a share target.
 
 ## Verify
 
@@ -58,13 +88,7 @@ For local responsive review, open `/__review` while the development server is ru
 
 ## Deploy
 
-Follow [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). A real Cloudflare account, D1 database, Access application and GitHub identity provider are required. No production credentials or database data are included.
-
-Using your own accounts? The guide covers Zero Trust team setup, GitHub OAuth registration, the exact-owner policy, and where to find every deployment config value. The optional ChatGPT connector has a [separate setup guide](docs/CONNECTOR.md#setup).
-
-Set `appOrigin` in `deployment.config.json` to your exact HTTPS origin, such as `https://later.example.com`. The script derives the Custom Domain and Worker origin from it. No source edits are required. Optional `ownerName`, `ownerHandle` and `ownerUrl` preserve your preferred display identity and site link; they do not authorize access.
-
-The tracked config defaults/examples intentionally show the original owner's domain, email and display values. Replace those as well as the account/Access placeholders before deploying your own instance. Application code does not depend on those reference values.
+Follow the [deployment guide](docs/DEPLOYMENT.md) to configure Cloudflare, D1, and owner-only Access with GitHub sign-in. Set your HTTPS `appOrigin` and replace the template's reference values and placeholders in `deployment.config.json`; no source edits are required.
 
 ```bash
 cp deployment.config.json.example deployment.config.json
@@ -73,7 +97,9 @@ npm run deploy -- --prepare-only
 npm run deploy -- --validate-only
 ```
 
-Preparation writes the production configuration without remote changes. Validation also builds and tests it without logging in, migrating or deploying. After authentication and Access setup, `npm run deploy` builds, tests, applies D1 migrations, and deploys the compiled Worker and assets. See the [portability audit](docs/OPEN-SOURCE-AUDIT.md) for publication checks and Git-history limits.
+These commands prepare, build, and test without remote changes. Once authentication and Access are configured, `npm run deploy` applies D1 migrations and publishes the Worker and assets. It does not seed production.
+
+For the optional ChatGPT connector, follow the [connector setup guide](docs/CONNECTOR.md#setup).
 
 ## Project map
 
