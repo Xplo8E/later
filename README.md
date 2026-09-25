@@ -60,6 +60,10 @@ For local responsive review, open `/__review` while the development server is ru
 
 Follow [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). A real Cloudflare account, D1 database, Access application and GitHub identity provider are required. No production credentials or database data are included.
 
+Using your own accounts? The guide covers Zero Trust team setup, GitHub OAuth registration, the exact-owner policy, and where to find every deployment config value. The optional ChatGPT connector has a [separate setup guide](docs/CONNECTOR.md#setup).
+
+This checkout still targets `later.xplo8e.com` in its deployment script. `deployment.config.json` does not currently select a hostname. Read the [custom-domain limitation](docs/DEPLOYMENT.md#before-you-start) before deploying a fork; changing only the account values will not retarget it.
+
 ```bash
 cp deployment.config.json.example deployment.config.json
 # Fill in the real account, database and Access application values.

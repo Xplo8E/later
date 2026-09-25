@@ -2,6 +2,8 @@
 
 Endpoint: `https://later.xplo8e.com/mcp` (stateless MCP Streamable HTTP).
 
+That is the reference deployment. For another installation, use `https://YOUR_LATER_HOST/mcp` after completing the [account setup and hostname prerequisite](DEPLOYMENT.md#before-you-start). Use your own Access application and AUD, not the identifiers in this document's historical verification sections.
+
 ## Tools
 
 | Tool | Behavior |
@@ -44,16 +46,26 @@ Connecting allows requested private notes and links to be returned to ChatGPT. T
 
 ## Setup
 
-1. Create `Later ChatGPT connector`, a self-hosted Access app at `later.xplo8e.com/mcp`. Reuse the exact-owner policy requiring GitHub. Allow only GitHub as IdP; leave WARP off.
+First finish the website setup in [DEPLOYMENT.md](DEPLOYMENT.md), including a verified owner sign-in. The connector is optional. It uses the same D1 library and GitHub identity provider, but a separate Access application and audience. You do not need another GitHub OAuth app.
+
+1. In your Cloudflare account, create `Later ChatGPT connector`, a self-hosted Access app at your Later hostname with path `mcp`. Verify coverage of `/mcp` and its descendants. Reuse your exact-owner policy requiring GitHub. Allow only your GitHub IdP; leave WARP off. Do not include `/app` or `/api` in this separate application.
 2. Enable HTTP-only cookies and hide the endpoint from App Launcher. Leave **Enforce cookie path attribute off for the MCP Access application**. This is the working production configuration after the consent failure described below; the website application is unchanged. The connector cookie is hostname-scoped, but its audience and owner checks still apply.
 3. Enable Managed OAuth. Disable localhost and loopback clients. Allow these documented ChatGPT callbacks only:
    - `https://chatgpt.com/connector_platform_oauth_redirect`
    - `https://chatgpt.com/connector/oauth/*`
-4. Use 15-minute access tokens and 24-hour grant sessions. Cloudflare re-evaluates policy on refresh. Grant expiry requires reauthorization.
-5. Add the new app's AUD to ignored `deployment.config.json` as `mcpAccessAudience`, distinct from `accessAudience`. An AUD is a configuration identifier, not a secret.
+4. Keep access tokens short-lived: **Default** is 15 minutes. Set **Grant session duration** explicitly instead of inheriting the website's session. Choose **2 weeks** or **1 month** if daily reconnection is unwanted. This is how long the refresh grant lasts; Cloudflare re-evaluates policy during refresh. Longer grants allow an authorized client to keep renewing access for longer, and grant expiry or revocation still requires reauthorization. Save the application. See [Managed OAuth settings](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/managed-oauth/).
+5. Copy this new application's AUD from its additional settings. Add a `mcpAccessAudience` property to your ignored `deployment.config.json`, alongside the existing fields. It must be the separate 64-character MCP AUD, not the website `accessAudience`, application UUID or GitHub client ID. Keep `accessAudience` pointing to the website app. AUDs are identifiers, not secrets.
 6. Run `npm run deploy`. It builds, tests and applies pending D1 migrations before deployment. The additive tools require migration `0002_library_operations.sql`; no production fixtures are inserted.
 7. Check anonymous non-browser requests receive an OAuth discovery challenge, not the React page or a tools list.
-8. In ChatGPT developer mode, create a private custom connector with the endpoint above and OAuth. Use managed registration, not the GitHub IdP client secret. Review the requested access and sign in as the exact owner. No public-directory submission is needed.
+8. In ChatGPT developer mode, create a private custom connector with your `https://YOUR_LATER_HOST/mcp` endpoint and OAuth. Use managed registration, not the GitHub IdP client secret. Review the requested access and sign in as your exact owner. No public-directory submission is needed. After server tool changes, refresh the installed connector's tool definitions and check the expected eight tools appear.
+
+The two ChatGPT callback patterns above belong in Managed OAuth's allowlist, not in the GitHub OAuth App. GitHub's callback remains `https://YOUR_TEAM.cloudflareaccess.com/cdn-cgi/access/callback`. These are two separate OAuth relationships: GitHub authenticates you to Cloudflare; Managed OAuth authorizes ChatGPT to call Later.
+
+After changing grant duration, reconnect to obtain a fresh grant rather than assuming an existing grant was extended. Verify an actual tool call after more than 15 minutes and again after a day. Tool discovery alone does not prove refresh works. No refresh tokens or client secrets should be copied into Later's source or deployment config.
+
+### Reference deployment session change, 2026-09-24
+
+The owner reported expiry after 24 hours. The dashboard showed the MCP grant inherited the 24-hour application session. The owner saved **1 month** for the OAuth grant; reopening the settings confirmed it persisted while access token lifetime remained **Default (15 minutes)** and the application session stayed 24 hours. This is saved-configuration evidence, not a completed month-long persistence test. Earlier verification entries below describe the previous settings.
 
 To disable connector operations independently, remove `mcpAccessAudience` and redeploy. Do not merely delete Access protection while leaving an enabled Worker audience. Manage/revoke the Access grants and tokens in Cloudflare; a ChatGPT disconnect alone is not proof of token revocation.
 
