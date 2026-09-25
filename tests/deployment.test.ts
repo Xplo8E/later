@@ -42,6 +42,7 @@ function run(config: unknown, args = ['--prepare-only'], mutate?: (built: any) =
       return { status: 0 };
     },
     URL,
+    applicationOrigin,
     console: { log: (message: string) => messages.push(message), error: (message: string) => messages.push(message) },
     process: { argv: args, env: {}, execPath: '/test/node', platform: 'linux', exit(code: number) { exitCode = code; throw stopped; } },
   };
@@ -72,10 +73,37 @@ test('deployment derives route and origin from one value and resets personal dis
   assert.equal(result.generated.vars.MCP_ACCESS_AUD, 'c'.repeat(64));
 });
 
+test('deployment and runtime accept canonical punycode domains, including IDN TLDs', () => {
+  const origins = [
+    'https://xn--bcher-kva.de',
+    'https://example.xn--p1ai',
+    'https://xn--bcher-kva.xn--p1ai',
+    `https://${'a'.repeat(63)}.example.com`,
+    `https://${['a'.repeat(63), 'b'.repeat(63), 'c'.repeat(63), 'd'.repeat(61)].join('.')}`,
+  ];
+  for (const appOrigin of origins) {
+    const url = applicationOrigin(appOrigin);
+    assert.equal(url.origin, appOrigin);
+    const result = run({ ...valid, appOrigin });
+    assert.equal(result.exitCode, 0, appOrigin);
+    assert.deepEqual(result.generated.routes, [{ pattern: url.hostname, custom_domain: true }]);
+    assert.equal(result.generated.vars.APP_ORIGIN, appOrigin);
+    assert.equal(result.commands.length, 0);
+  }
+});
+
 test('invalid or incomplete deployment settings fail before writes or subprocesses', () => {
   const origins = ['', undefined, 'http://reading.example.com', 'https://reading.example.com/',
     'https://reading.example.com/path', 'https://reading.example.com?query', 'https://reading.example.com#hash',
-    'https://user:pass@reading.example.com', 'https://reading.example.com:8443', 'https://127.0.0.1', 'https://localhost'];
+    'https://user:pass@reading.example.com', 'https://reading.example.com:8443', 'https://127.0.0.1', 'https://localhost',
+    'https://[::1]', 'https://127.1', 'https://2130706433', 'https://0x7f000001',
+    'https://reading.example.com:443', 'https://READING.example.com', 'https://reading.example.com.',
+    'https://reading..example.com', 'https://-reading.example.com', 'https://reading-.example.com',
+    'https://read_ing.example.com', 'https://*.example.com', 'https://example.xn--',
+    // Configuration stays canonical: use ASCII/punycode, not Unicode or percent-encoded hosts.
+    'https://bücher.de', 'https://example.рф', 'https://%65xample.com',
+    `https://${'a'.repeat(64)}.example.com`,
+    `https://${['a'.repeat(63), 'b'.repeat(63), 'c'.repeat(63), 'd'.repeat(62)].join('.')}`];
   for (const appOrigin of origins) {
     const result = run({ ...valid, appOrigin });
     assert.equal(result.exitCode, 1);

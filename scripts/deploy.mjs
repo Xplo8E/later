@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { applicationOrigin } from '../shared/site-config.ts';
 
 const prepareOnly = process.argv.includes('--prepare-only');
 const validateOnly = process.argv.includes('--validate-only');
@@ -31,13 +32,8 @@ if (Object.keys(config).some(key => !fields.includes(key))) {
 
 let appUrl;
 try {
-  appUrl = new URL(config.appOrigin);
+  appUrl = applicationOrigin(config.appOrigin);
 } catch {
-  fail('Set appOrigin to your exact HTTPS origin, without a path or trailing slash.');
-}
-// A Custom Domain uses a DNS hostname, not an IP, port, path or wildcard route.
-const dnsHostname = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
-if (appUrl.protocol !== 'https:' || appUrl.origin !== config.appOrigin || appUrl.port || !dnsHostname.test(appUrl.hostname)) {
   fail('Set appOrigin to your exact HTTPS DNS origin, without credentials, a port, path or trailing slash.');
 }
 for (const key of ['ownerName', 'ownerHandle']) {

@@ -128,3 +128,24 @@ local deployment config, generated config and `.dev.vars` are not tracked; keep 
   output. No commit, push or deployment was performed in this audit.
 - Live deployment, real GitHub login/other-identity denial, OAuth refresh and physical Android
   remain acceptance checks after deployment; local tests are not production evidence.
+
+## PR #3 follow-up: Internationalized hostname validation
+
+The review of `327a745` identified that the duplicated hostname regex rejected punycode
+TLDs such as `xn--p1ai`. Regression tests reproduced that rejection before the fix.
+
+- `applicationOrigin()` in `shared/site-config.ts` is now the single origin validator
+  used by deployment and Worker authentication. It validates individual DNS labels,
+  including punycode TLDs, and enforces the 63-character label and 253-character hostname
+  limits. The latter also closes the previous missing total-hostname-length check.
+- HTTPS, canonical ASCII/punycode spelling, multiple labels, and no IP literals,
+  credentials, explicit ports, paths, queries or fragments remain required.
+- The deploy command uses the existing `tsx` loader to import the shared TypeScript
+  module, without adding dependencies or relying on native Node TypeScript support.
+- Tests cover accepted punycode origins and generated routes, invalid hosts and
+  noncanonical origins, length boundaries, and exact-origin authorization with IDNs.
+- The focused deployment tests, typecheck, production build/config validation, all
+  38 tests, and diff whitespace checks passed locally. No lint script is configured.
+
+Branding defaults and PR structure are unchanged. No production deployment or live IDN
+DNS/Cloudflare provisioning was performed; these checks establish local validation behavior.

@@ -14,6 +14,11 @@ Set `appOrigin` in `deployment.config.json` to the exact HTTPS origin, without c
 
 The hostname examples below mean your chosen hostname. Optional `ownerName`, `ownerHandle` and `ownerUrl` configure display-only branding. The link is hidden when `ownerUrl` is omitted. Neither a display name nor a GitHub handle grants access; `ownerEmail` remains the exact permitted identity.
 
+For internationalized domains, supply the lowercase ASCII/punycode origin, such as
+`https://example.xn--p1ai`, not its Unicode spelling. Deployment and Worker authentication
+share the same validator. Each DNS label must be 1–63 characters and the hostname at most
+253 characters; IP literals and single-label hosts are not deployment origins.
+
 ## Configuration files
 
 | File | What belongs here | Git handling |

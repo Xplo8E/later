@@ -21,6 +21,15 @@ test('Access verifies signatures and binds issuer, audience, expiry and owner', 
   const token = await sign();
   await assert.rejects(verifyIdentity(`${token.slice(0, -20)}xxxxxxxxxxxxxxxxxxxx`, config, jwks), /session/);
   assert.throws(() => authConfig({} as Env), /configured/);
+  for (const origin of ['https://xn--bcher-kva.de', 'https://example.xn--p1ai']) {
+    const idnConfig = { ...config, APP_ORIGIN: origin };
+    assert.doesNotThrow(() => authConfig(idnConfig));
+    const request = new Request(origin + '/api/links', {
+      method: 'POST', headers: { Origin: origin, 'Sec-Fetch-Site': 'same-origin' },
+    });
+    assert.doesNotThrow(() => requireSameOrigin(request, idnConfig, session));
+    assert.throws(() => requireSameOrigin(request, config, session), /must come from/);
+  }
   for (const origin of ['', 'http://reading.example.com', 'https://reading.example.com/', 'https://reading.example.com/path']) {
     assert.throws(() => authConfig({ ...config, APP_ORIGIN: origin }), /APP_ORIGIN/);
   }
