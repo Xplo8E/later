@@ -12,7 +12,8 @@ type UpsertInput = LinkPatch & { url: string; requestId: string; onDuplicate?: '
 async function operation(requestId: string, payload: unknown): Promise<Operation> {
   if (!/^[A-Za-z0-9_-]{8,128}$/.test(requestId)) throw new HttpError(400, 'Use a requestId of 8–128 letters, digits, underscores or hyphens. Reuse it only for an identical retry.');
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(payload)));
-  return { requestId, hash: Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join(''), attempt: crypto.randomUUID(), now: new Date().toISOString() };
+  const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+  return { requestId, hash, attempt: crypto.randomUUID(), now: new Date().toISOString() };
 }
 
 // Every edit is conditional on owning the receipt inserted in this same batch.
@@ -57,7 +58,10 @@ async function complete(db: D1Database, op: Operation, statements: D1PreparedSta
 
 export async function upsertLink(env: Env, ctx: Pick<ExecutionContext, 'waitUntil'>, input: UpsertInput) {
   const url = savedUrl(input.url);
-  const fields = Object.fromEntries(['title', 'note', 'tags', 'status'].filter(key => input[key as keyof UpsertInput] !== undefined).map(key => [key, input[key as keyof UpsertInput]]));
+  const suppliedFields = ['title', 'note', 'tags', 'status']
+    .filter(key => input[key as keyof UpsertInput] !== undefined)
+    .map(key => [key, input[key as keyof UpsertInput]]);
+  const fields = Object.fromEntries(suppliedFields);
   const patch = Object.keys(fields).length ? parsePatch(fields) : {};
   const mode = input.onDuplicate ?? 'return';
   if (!['return', 'merge'].includes(mode)) throw new HttpError(400, 'Invalid duplicate behavior.');
@@ -90,7 +94,7 @@ export async function upsertLink(env: Env, ctx: Pick<ExecutionContext, 'waitUnti
     throw new HttpError(400, 'The merged item would exceed 4000 note characters or 12 tags. Nothing was changed.');
   });
   if (!result.replayed && result.outcome === 'created' && settings.fetchMetadata) {
-    ctx.waitUntil(enrichLink(env.DB, result.link.id, url.href, 0, settings).catch(() => undefined));
+    ctx.waitUntil(enrichLink(env.DB, result.link.id, url.href, 0, settings, env.APP_ORIGIN).catch(() => undefined));
   }
   return result;
 }

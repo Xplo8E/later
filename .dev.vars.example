@@ -1,2 +1,6 @@
 # Used by vite dev only. Never enables authentication bypass in a production build.
 LOCAL_DEV=true
+# Reference display values only; change these for your own instance. They never grant access.
+OWNER_NAME="Vinay Kumar Rasala"
+OWNER_HANDLE=Xplo8E
+OWNER_URL=https://xplo8e.com

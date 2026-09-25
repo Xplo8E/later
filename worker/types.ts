@@ -8,5 +8,6 @@ export interface Env {
   OWNER_EMAIL?: string;
   OWNER_NAME?: string;
   OWNER_HANDLE?: string;
+  OWNER_URL?: string;
   LOCAL_DEV?: string;
 }

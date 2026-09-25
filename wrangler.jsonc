@@ -19,6 +19,7 @@
   "vars": {
     "APP_ORIGIN": "https://later.xplo8e.com",
     "OWNER_NAME": "Vinay Kumar Rasala",
-    "OWNER_HANDLE": "Xplo8E"
+    "OWNER_HANDLE": "Xplo8E",
+    "OWNER_URL": "https://xplo8e.com"
   }
 }

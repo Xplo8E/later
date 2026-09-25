@@ -34,7 +34,10 @@ export function createLibraryServer(env: Env, ctx: Pick<ExecutionContext, 'waitU
     description: 'Search saved titles, URLs, notes and tags. Empty query lists recent items. Returns up to 50 items with nextCursor for pagination; omitted status searches all locations.',
     inputSchema: z.object({ q: z.string().max(200).optional(), tag: z.string().max(40).optional(), status: statusSchema.optional(), cursor: z.string().max(512).optional() }).strict(),
     annotations: readAnnotations,
-  }, args => run(() => listLinks(env.DB, new URLSearchParams(Object.entries(args).filter((entry): entry is [string, string] => entry[1] !== undefined)))));
+  }, args => run(() => {
+    const suppliedFields = Object.entries(args).filter((entry): entry is [string, string] => entry[1] !== undefined);
+    return listLinks(env.DB, new URLSearchParams(suppliedFields));
+  }));
   server.registerTool('get_link', {
     title: 'Read a saved link', description: 'Read one saved link by its Later ID, including its full note and tags. Does not fetch the original website.',
     inputSchema: z.object({ id: idSchema }).strict(), annotations: readAnnotations,
@@ -47,7 +50,15 @@ export function createLibraryServer(env: Env, ctx: Pick<ExecutionContext, 'waitU
   server.registerTool('upsert_link', {
     title: 'Save a curated item to Later',
     description: 'Save a URL with title, note, tags and status in one call. Existing URLs are returned unchanged by default. onDuplicate="merge" atomically appends a nonempty note (separated by a blank line) and unions tags; title and status apply only to NEW items. Use update_link/set_link_status to change existing titles or locations. Request ID prevents duplicate edits on retries; reuse it with identical inputs. Returns {link, outcome: created|existing|merged, replayed}. Metadata may be fetched for new items according to settings. Maximum combined note 4000 characters and 12 tags; failures make no edits.',
-    inputSchema: z.object({ requestId: requestIdSchema, url: z.string().min(1).max(4096), title: z.string().min(1).max(500).optional(), note: z.string().max(4000).optional(), tags: z.array(z.string().min(1).max(40)).max(12).optional(), status: statusSchema.optional(), onDuplicate: z.enum(['return', 'merge']).optional() }).strict(),
+    inputSchema: z.object({
+      requestId: requestIdSchema,
+      url: z.string().min(1).max(4096),
+      title: z.string().min(1).max(500).optional(),
+      note: z.string().max(4000).optional(),
+      tags: z.array(z.string().min(1).max(40)).max(12).optional(),
+      status: statusSchema.optional(),
+      onDuplicate: z.enum(['return', 'merge']).optional(),
+    }).strict(),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   }, args => run(() => upsertLink(env, ctx, args), true));
   server.registerTool('append_note', {
@@ -94,5 +105,7 @@ export async function handleMcp(request: Request, env: Env, ctx: Pick<ExecutionC
     const response = await transport.handleRequest(request, { parsedBody: body });
     response.headers.set('Cache-Control', 'no-store');
     return response;
-  } finally { await server.close(); }
+  } finally {
+    await server.close();
+  }
 }

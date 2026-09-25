@@ -1,5 +1,7 @@
 export class HttpError extends Error {
-  constructor(public status: number, message: string, public details?: Record<string, unknown>) { super(message); }
+  constructor(public status: number, message: string, public details?: Record<string, unknown>) {
+    super(message);
+  }
 }
 
 export async function readLimited(response: Response | Request, maxBytes: number): Promise<string> {
@@ -17,18 +19,29 @@ export async function readLimited(response: Response | Request, maxBytes: number
       if (size > maxBytes) throw new HttpError(413, 'The response or request is too large.');
       chunks.push(value);
     }
-  } finally { await reader.cancel().catch(() => undefined); }
+  } finally {
+    // Release the stream on success as well as size/read failures.
+    await reader.cancel().catch(() => undefined);
+  }
   const bytes = new Uint8Array(size);
   let offset = 0;
-  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.length;
+  }
   return new TextDecoder().decode(bytes);
 }
 
 export async function jsonBody(request: Request): Promise<Record<string, unknown>> {
   if (request.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json') throw new HttpError(415, 'Send application/json.');
   let value: unknown;
-  try { value = JSON.parse(await readLimited(request, 32_768)); }
-  catch (error) { if (error instanceof HttpError) throw error; throw new HttpError(400, 'Invalid JSON.'); }
+  try {
+    value = JSON.parse(await readLimited(request, 32_768));
+  } catch (error) {
+    // Preserve size-limit errors rather than reporting them as malformed JSON.
+    if (error instanceof HttpError) throw error;
+    throw new HttpError(400, 'Invalid JSON.');
+  }
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new HttpError(400, 'Expected a JSON object.');
   return value as Record<string, unknown>;
 }

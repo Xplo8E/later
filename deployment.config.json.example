@@ -1,8 +1,12 @@
 {
+  "appOrigin": "https://later.xplo8e.com",
   "accountId": "YOUR_CLOUDFLARE_ACCOUNT_ID",
   "databaseId": "YOUR_D1_DATABASE_ID",
   "databaseName": "later",
   "accessTeamDomain": "https://YOUR_TEAM.cloudflareaccess.com",
   "accessAudience": "YOUR_ACCESS_APPLICATION_AUD_TAG",
-  "ownerEmail": "YOUR_EXACT_GITHUB_EMAIL"
+  "ownerEmail": "youremail@gmail.com",
+  "ownerName": "Vinay Kumar Rasala",
+  "ownerHandle": "Xplo8E",
+  "ownerUrl": "https://xplo8e.com"
 }

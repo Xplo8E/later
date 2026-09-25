@@ -1,12 +1,10 @@
 # Later implementation record
 
-Design source: https://www.figma.com/design/qCOHnEWIqgCWaxvb37RDTz/Later.xplo8e.com?node-id=0-1
-
-Reviewed on 22 September 2026 through the vinayrasala Figma connection.
+Initial private design reference reviewed on 22 September 2026. The design-file link and connected account identity are omitted from this public record.
 
 ## Scope
 
-Single-owner private reading library. React, TypeScript, Vite, Cloudflare Workers, D1, and Cloudflare Access with GitHub. Production hostname: later.xplo8e.com. No public library, registration, AI, collaboration, or analytics.
+Single-owner private reading library. React, TypeScript, Vite, Cloudflare Workers, D1, and Cloudflare Access with GitHub. The production hostname is selected through `appOrigin`. No public library, registration, AI, collaboration, or analytics.
 
 ## Design decisions
 
@@ -50,15 +48,15 @@ Android sharing is implemented as a protected, non-mutating GET draft route with
 - Added transport and rediscovery coverage. The production build and all 18 tests pass.
 - Added `scripts/smoke-local.mjs` for disposable local API and real-site metadata checks. It refuses non-local sessions and removes only the items it creates.
 - Configured Cloudflare Access, GitHub and D1, and deployed the Worker. See [DEPLOYMENT-RUN.md](DEPLOYMENT-RUN.md) for evidence and unverified flows.
-- Set Git origin to `https://github.com/Xplo8E/later.git`. The initial source was committed as `40317ad` at the owner's request. The owner handles pushing.
+- Initialized Git for the original installation. Repository hosting is independent of runtime configuration.
 
 ## External configuration used by deployment
 
-- Cloudflare account with the xplo8e.com zone.
+- Cloudflare account containing the intended domain zone.
 - D1 database ID.
 - Cloudflare Access team domain, application audience, and exact owner email.
 - GitHub OAuth identity provider in Access.
-- Git origin: `https://github.com/Xplo8E/later.git`.
+- Optional Git remote chosen by the repository owner.
 
 These values have been configured for the first deployment. OAuth credentials remain in Cloudflare, outside the source tree.
 

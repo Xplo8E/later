@@ -7,7 +7,7 @@ import { generateKeyPair, exportJWK, SignJWT } from 'jose';
 test('compiled Worker authenticates and extracts bounded HTML metadata without overwriting edits', async t => {
   const { publicKey, privateKey } = await generateKeyPair('RS256');
   const jwk = await exportJWK(publicKey); jwk.kid = 'integration';
-  const origin = 'https://later.xplo8e.com';
+  const origin = 'https://reading.example.com';
   const issuer = 'https://test-team.cloudflareaccess.com';
   const token = await new SignJWT({ email: 'owner@example.com' }).setProtectedHeader({ alg: 'RS256', kid: 'integration' }).setSubject('owner').setIssuedAt().setExpirationTime('5m').setIssuer(issuer).setAudience('later-test').sign(privateKey);
   let release: (() => void) | undefined;
@@ -23,6 +23,8 @@ test('compiled Worker authenticates and extracts bounded HTML metadata without o
       if (url.hostname === 'test-team.cloudflareaccess.com') return WorkerResponse.json({ keys: [jwk] });
       if (url.hostname === 'cloudflare-dns.com') return WorkerResponse.json({ Status: 0, Answer: url.searchParams.get('type') === 'A' ? [{ type: 1, data: '1.1.1.1' }] : [] });
       if (url.hostname === 'redirect.example.com') return new WorkerResponse(null, { status: 302, headers: { Location: 'http://localhost/' } });
+      if (url.hostname === 'self-redirect.example.com') return new WorkerResponse(null, { status: 302, headers: { Location: origin + '/app/' } });
+      if (url.hostname === 'self-image.example.com') return new WorkerResponse(`<title>Public article</title><meta property="og:image" content="${origin}/image.png">`, { headers: { 'Content-Type': 'text/html' } });
       if (url.hostname === 'pdf.example.com') return new WorkerResponse('pdf', { headers: { 'Content-Type': 'application/pdf' } });
       if (url.hostname === 'slow.example.com' && gate) await gate;
       return new WorkerResponse('<!doctype html><title>Fallback</title><meta property="og:title" content="XPC &amp; XNU notes"><meta property="og:type" content="article"><meta name="description" content="A small useful reference."><body>Reference content.</body>', { headers: { 'Content-Type': 'text/html' } });
@@ -50,6 +52,24 @@ test('compiled Worker authenticates and extracts bounded HTML metadata without o
   assert.equal((await call('/api/preview', 'POST', { url: 'https://redirect.example.com/' })).status, 422);
   assert.equal(visited.includes('localhost'), false);
   assert.equal((await call('/api/preview', 'POST', { url: 'https://pdf.example.com/' })).status, 422);
+  assert.equal((await call('/api/preview', 'POST', { url: origin + '/app/' })).status, 422);
+  assert.equal((await call('/api/preview', 'POST', { url: 'https://self-redirect.example.com/' })).status, 422);
+  const imagePreview = await (await call('/api/preview', 'POST', { url: 'https://self-image.example.com/' })).json() as { imageUrl: string | null };
+  assert.equal(imagePreview.imageUrl, null);
+  assert.equal(visited.includes(new URL(origin).hostname), false, 'Metadata must not request this installation');
+
+  const selfCapture = await (await call('/api/links', 'POST', { url: origin + '/saved', note: 'Preserved without a preview' })).json() as { id: string };
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const item = await (await call(`/api/links/${selfCapture.id}`)).json() as { metadataStatus: string; note: string };
+    if (item.metadataStatus !== 'pending') {
+      assert.equal(item.metadataStatus, 'failed');
+      assert.equal(item.note, 'Preserved without a preview');
+      break;
+    }
+    assert.ok(attempt < 29, 'Self-host capture must finish metadata failure');
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  assert.equal((await call(`/api/links/${selfCapture.id}/metadata`, 'POST', {})).status, 202);
 
   gate = new Promise(resolve => { release = resolve; });
   const created = await (await call('/api/links', 'POST', { url: 'https://slow.example.com/article', note: 'Keep my original note.' })).json() as { id: string };

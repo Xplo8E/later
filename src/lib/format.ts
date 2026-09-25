@@ -17,15 +17,25 @@ export function groupLinks(links: SavedLink[], finished = false) {
   const groups: Record<string, SavedLink[]> = {};
   for (const link of links) {
     const date = new Date(finished ? link.finishedAt || link.savedAt : link.savedAt);
-    const label = finished ? date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
-      : date.toDateString() === today ? 'Today'
-      : date.toDateString() === yesterday ? 'Yesterday'
-      : date.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+    let label: string;
+    if (finished) {
+      label = date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    } else if (date.toDateString() === today) {
+      label = 'Today';
+    } else if (date.toDateString() === yesterday) {
+      label = 'Yesterday';
+    } else {
+      label = date.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+    }
     (groups[label] ||= []).push(link);
   }
   return Object.entries(groups);
 }
 export function validUrl(value: string) {
-  try { const url = new URL(value.trim()); return ['http:', 'https:'].includes(url.protocol) && !!url.hostname && !url.username && !url.password; }
-  catch { return false; }
+  try {
+    const url = new URL(value.trim());
+    return ['http:', 'https:'].includes(url.protocol) && !!url.hostname && !url.username && !url.password;
+  } catch {
+    return false;
+  }
 }

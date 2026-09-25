@@ -25,7 +25,7 @@ export async function handleApi(request: Request, env: Env, ctx: Pick<ExecutionC
     const body = await jsonBody(request);
     const settings = await getSettings(env.DB);
     if (!settings.fetchMetadata) throw new HttpError(422, 'Automatic previews are switched off.');
-    return json(await fetchMetadata(savedUrl(body.url).href));
+    return json(await fetchMetadata(savedUrl(body.url).href, env.APP_ORIGIN));
   }
   if ((path === '/api/links' || path === '/api/search') && method === 'GET') return json(await listLinks(env.DB, url.searchParams));
   if (path === '/api/links' && method === 'POST') {
@@ -43,13 +43,27 @@ export async function handleApi(request: Request, env: Env, ctx: Pick<ExecutionC
     return json(rows.results.map(toLink));
   }
   if (path === '/api/export' && method === 'GET') {
-    const [rows, settings] = await Promise.all([env.DB.prepare(`${selectLinks} ORDER BY l.saved_at DESC,l.id DESC`).all<Record<string, unknown>>(), getSettings(env.DB)]);
-    return new Response(JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), settings, links: rows.results.map(toLink) }, null, 2), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Content-Disposition': 'attachment; filename="later-library.json"', 'Cache-Control': 'no-store' } });
+    const [rows, settings] = await Promise.all([
+      env.DB.prepare(`${selectLinks} ORDER BY l.saved_at DESC,l.id DESC`).all<Record<string, unknown>>(),
+      getSettings(env.DB),
+    ]);
+    const snapshot = { version: 1, exportedAt: new Date().toISOString(), settings, links: rows.results.map(toLink) };
+    return new Response(JSON.stringify(snapshot, null, 2), {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="later-library.json"',
+        'Cache-Control': 'no-store',
+      },
+    });
   }
   if (path === '/api/data' && method === 'DELETE') {
     const body = await jsonBody(request);
     if (body.confirmation !== 'DELETE ALL') throw new HttpError(400, 'Confirm deletion by typing DELETE ALL.');
-    await env.DB.batch([env.DB.prepare('DELETE FROM links'), env.DB.prepare('DELETE FROM tags'), env.DB.prepare('UPDATE settings SET value = ? WHERE id = 1').bind(JSON.stringify(DEFAULT_SETTINGS))]);
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM links'),
+      env.DB.prepare('DELETE FROM tags'),
+      env.DB.prepare('UPDATE settings SET value = ? WHERE id = 1').bind(JSON.stringify(DEFAULT_SETTINGS)),
+    ]);
     return json({ deleted: true });
   }
   const match = /^\/api\/links\/([A-Za-z0-9-]{1,100})(?:\/(open|metadata))?$/.exec(path);
@@ -60,7 +74,10 @@ export async function handleApi(request: Request, env: Env, ctx: Pick<ExecutionC
     if (!action && method === 'DELETE') {
       await jsonBody(request);
       await getLink(env.DB, id);
-      await env.DB.batch([env.DB.prepare('DELETE FROM links WHERE id = ?').bind(id), env.DB.prepare('DELETE FROM tags WHERE NOT EXISTS(SELECT 1 FROM link_tags WHERE tag_name = tags.name)')]);
+      await env.DB.batch([
+        env.DB.prepare('DELETE FROM links WHERE id = ?').bind(id),
+        env.DB.prepare('DELETE FROM tags WHERE NOT EXISTS(SELECT 1 FROM link_tags WHERE tag_name = tags.name)'),
+      ]);
       return json({ deleted: true });
     }
     if (action === 'open' && method === 'POST') {
@@ -76,7 +93,7 @@ export async function handleApi(request: Request, env: Env, ctx: Pick<ExecutionC
       if (!settings.fetchMetadata) throw new HttpError(422, 'Turn on automatic metadata in Settings first.');
       const version = await env.DB.prepare("UPDATE links SET metadata_version=metadata_version+1,metadata_status='pending',metadata_started_at=? WHERE id=? RETURNING metadata_version").bind(new Date().toISOString(), id).first<{ metadata_version: number }>();
       if (!version) throw new HttpError(404, 'Link not found.');
-      ctx.waitUntil(enrichLink(env.DB, id, link.url, version.metadata_version, settings).catch(() => undefined));
+      ctx.waitUntil(enrichLink(env.DB, id, link.url, version.metadata_version, settings, env.APP_ORIGIN).catch(() => undefined));
       return json({ queued: true }, 202);
     }
   }

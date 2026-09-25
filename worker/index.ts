@@ -3,6 +3,7 @@ import { authenticate } from './auth';
 import { handleApi } from './api';
 import { handleMcp } from './mcp';
 import { HttpError, json, securityHeaders } from './http';
+import { ownerWebsite } from '../shared/site-config';
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -15,7 +16,22 @@ export default {
         const session = await authenticate(request, env);
         if (path === '/api' || path.startsWith('/api/')) return securityHeaders(await handleApi(request, env, ctx, session), development);
       }
-      const response = await env.ASSETS.fetch(request);
+      let ownerUrl: URL | null;
+      try {
+        ownerUrl = ownerWebsite(env.OWNER_URL);
+      } catch {
+        throw new HttpError(503, 'OWNER_URL must be an HTTPS URL without credentials, or omitted.');
+      }
+      let response = await env.ASSETS.fetch(request);
+      if (response.headers.get('Content-Type')?.includes('text/html')) {
+        // Expose only the optional public link, never the rest of the Worker bindings.
+        response = new HTMLRewriter().on('html', {
+          element(element) {
+            if (ownerUrl) element.setAttribute('data-owner-url', ownerUrl.href);
+            else element.removeAttribute('data-owner-url');
+          },
+        }).transform(response);
+      }
       const secured = securityHeaders(response, development);
       if (privateRoute) secured.headers.set('Cache-Control', 'no-store');
       return secured;
