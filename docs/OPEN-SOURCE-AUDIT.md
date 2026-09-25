@@ -79,7 +79,7 @@ values; account/database/Access settings were preserved. Generated production co
 ignored. The old local-preview alias was deliberately removed; the explicit development bypass
 now accepts only loopback hosts. No dependencies, DNS, Access policies or live accounts changed.
 
-### Checks performed
+### Historical checks at `327a745`
 
 - `npm run typecheck`, `npm run build`, and all 37 tests passed.
 - `npm run deploy -- --validate-only` passed using the existing installation's local config.
@@ -94,7 +94,7 @@ now accepts only loopback hosts. No dependencies, DNS, Access policies or live a
   with its explicit auth bypass, not production GitHub authentication.
 - Diff whitespace checks passed. No lint script is configured.
 
-### Sensitive-value scan
+### Historical sensitive-value scan
 
 **Subsequent owner decision:** after the initial scan below, the owner explicitly requested
 restoring original non-secret domain/email/display values in tracked configuration. Those now
@@ -117,17 +117,20 @@ candidates, but 37 blobs retain personal references. Git history contains two di
 identity entries. Sanitizing the working tree does not erase any of that history. The ignored
 local deployment config, generated config and `.dev.vars` are not tracked; keep them that way.
 
-### Before publication
+### Publication status
 
-- Decide whether existing personal references and author metadata may remain in Git history.
-  If not, use a separately approved history cleanup or clean-history publication. No history
-  rewrite was performed, and local scans cannot attest to remote-only refs or copies.
-- Choose a license before describing the project as open source; no license is currently tracked.
-  No license terms were selected on the owner's behalf.
-- Commit/review the intended sanitized files before publishing. Do not add local config or build
-  output. No commit, push or deployment was performed in this audit.
-- Live deployment, real GitHub login/other-identity denial, OAuth refresh and physical Android
-  remain acceptance checks after deployment; local tests are not production evidence.
+As of 25 September 2026:
+
+- AGPL-3.0-or-later licensing is recorded in [LICENSE](../LICENSE), [NOTICE](../NOTICE),
+  and the [README license section](../README.md#license).
+- The portability and origin-validator changes were committed and merged into `master`
+  through PR #3. Personal references and author metadata remain in Git history; no history
+  rewrite was performed. The historical scans above do not attest to remote-only refs or copies.
+- Local deployment config, generated production config, `.dev.vars`, build output, tokens
+  and secrets must remain untracked.
+- Repository publication does not verify production deployment, real GitHub authentication,
+  OAuth refresh or physical Android behavior. See [current verification status](VERIFICATION.md#current-verification-status)
+  for the latest recorded checks and remaining acceptance work.
 
 ## PR #3 follow-up: Internationalized hostname validation
 

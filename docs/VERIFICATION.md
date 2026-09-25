@@ -1,12 +1,53 @@
 # Verification record
 
-The latest ChatGPT connector release is in [CONNECTOR.md](CONNECTOR.md): the production build and **32 tests pass**, migration `0002_library_operations.sql` is applied, and Worker `[identifier omitted]` is deployed. Live OAuth discovery, anonymous denial and the disabled workers.dev address were checked. After refreshing the installed connector, ChatGPT's authenticated settings page visibly lists all **eight tools**, including one-call upsert, atomic note append and additive tags. Actual new-tool calls from a conversation, production token lifecycle and a second real identity remain unverified. Earlier five-tool deployment, consent troubleshooting and share evidence are recorded separately.
+## Current verification status
 
-The original local review below is dated 22 September 2026. A follow-up deployment and verification run on 23 September is recorded in [DEPLOYMENT-RUN.md](DEPLOYMENT-RUN.md). Later has now been published to `[configured application origin]`; authenticated production and physical-device checks are not yet complete.
+As of 25 September 2026, the latest automated verification was performed on `31217f5`,
+including the portability and shared origin-validator changes now merged into `master`:
 
-The subsequent Android share-target change passes 21 tests and the production build. Its separate evidence and phone acceptance steps are in [SHARING.md](SHARING.md). The owner reported successful Android home-screen installation, but the new share flow has not yet been verified on the physical phone.
+- `npm run typecheck`: passed.
+- Production build: passed through `npm run deploy -- --validate-only`, which runs `npm run build`.
+- `npm test`: 38 tests passed, none failed or skipped.
+- `npm run deploy -- --validate-only`: passed, including compiled production-config checks.
+- No lint script is configured.
+- Production deployment was not performed for these portability/origin-validation changes.
 
-## Build and automated checks
+Later changes to `master` added licensing and README text; application code and tests are
+unchanged from that verified revision. This documentation cleanup did not rerun the tests.
+
+The [25 September local UI checks](LOCAL-UI-VERIFICATION.md) cover browser interactions
+and narrow/short viewports. They are not physical-device or real authentication tests.
+Production sign-in, another-identity rejection, OAuth refresh, and physical Android
+acceptance remain separate checks for the current revision. The owner's earlier report
+of successful Android home-screen installation does not establish those results.
+
+## Historical verification
+
+The counts below belong to the releases reviewed on those dates, not the current test suite.
+
+### 23 September 2026: MCP release and deployment
+
+The connector release in [CONNECTOR.md](CONNECTOR.md) passed the production build and
+32 tests, applied migration `0002_library_operations.sql`, and was deployed. Live OAuth
+discovery, anonymous denial and the disabled workers.dev address were checked. After
+refreshing the installed connector, ChatGPT's authenticated settings page visibly listed
+all eight tools, including one-call upsert, atomic note append and additive tags. At that
+check, new-tool calls from a conversation, production token lifecycle and a second real
+identity remained unverified. Earlier deployment and consent evidence is in the connector
+guide and [deployment run](DEPLOYMENT-RUN.md).
+
+### 23 September 2026: Android share target
+
+The share-target change passed 21 tests and the production build. Its evidence and phone
+acceptance steps are in [SHARING.md](SHARING.md). The owner reported successful Android
+home-screen installation; the new share flow had not been verified on the physical phone.
+
+### 22 September 2026: Initial UI review
+
+The following sections preserve the original local review and its acceptance limits.
+References under `qa/` identify local artifacts from that review, not files shipped in Git.
+
+#### Build and automated checks
 
 - `npm run build`: passes TypeScript and the client/Worker production builds.
 - `npm test`: 15 tests pass, with no failures or skipped tests.
@@ -15,7 +56,7 @@ The subsequent Android share-target change passes 21 tests and the production bu
 - The production Worker rejects local development authorization and returns `X-Frame-Options: DENY`. The development-only responsive review interface is absent from the production bundle.
 - PWA checks cover manifest fields, PNG sizes, maskable icons and the service worker's limited cache behavior.
 
-## Design and readability
+#### Design and readability
 
 The approved Modernist technical editorial direction is retained: Inter throughout, clear typographic hierarchy, an aligned grid, thin rules, flat surfaces and nearly square controls. Palettes change the reading atmosphere without changing the interface structure or introducing decorative typefaces.
 
@@ -23,7 +64,7 @@ Titles use 16px medium-weight text in lists. Notes use 14px regular text with a 
 
 The menu uses a 22px three-line icon inside a 44px tap area. Row actions, drawer actions, text actions and primary buttons have 44px minimum phone tap heights. Tag filters use 36px heights with spacing between them. Focus outlines remain visible. Reduced-motion preferences are respected.
 
-### Measured palette contrast
+##### Measured palette contrast
 
 Ratios below use the CSS color values, not antialiased screenshot pixels. “Secondary” is the muted metadata token. Full measurements are in `qa/contrast.json`.
 
@@ -40,7 +81,7 @@ These core text pairs exceed 4.5:1; measured interactive borders exceed 3:1. Thi
 
 All six palette buttons and System were clicked in the phone interface. Selection state and persistence were checked. The final local preference is Midnight; default capture is Inbox with metadata and tag suggestions enabled.
 
-## Responsive review
+#### Responsive review
 
 The review used Chromium and a same-origin development iframe with real CSS viewport sizes. It is not an Android device emulator.
 
@@ -57,7 +98,7 @@ The review used Chromium and a same-origin development iframe with real CSS view
 
 Scrollbar width can reduce the available content width by 15px in this environment. Narrow rows prioritize text, and list images are hidden below 360px. Detail previews are hidden on mobile so they do not displace the note. The mobile header, drawers and notifications account for safe-area insets.
 
-### Mobile note detail follow-up — September 22, 2026
+##### Mobile note detail follow-up
 
 The user's concern was confirmed: the earlier drawer was responsive in width but unnecessarily tall. At 390 × 740px, a two-line note almost filled the screen, with edit controls below the fold. The 150px placeholder preview and generous metadata spacing were the main causes. Evidence: `qa/11-note-before.jpg`.
 
@@ -73,7 +114,7 @@ The temporary long note used for this check was restored to its original text th
 
 Evidence: `qa/13-note-actions.jpg`, `qa/14-long-note-320.jpg`, `qa/15-note-editor-280.jpg`, `qa/16-desktop-detail.jpg`, and `qa/17-mobile-note-final.jpg`.
 
-### Interaction pass
+##### Interaction pass
 
 | Area | Checked behavior |
 | --- | --- |
@@ -91,7 +132,7 @@ Evidence: `qa/13-note-actions.jpg`, `qa/14-long-note-320.jpg`, `qa/15-note-edito
 
 The temporary item used for the lifecycle checks was removed. Pagination is covered by the D1 tests; the “Show more” interface was not exercised with a large browser fixture set. Native install prompts and production sign-in are outside the local interaction evidence.
 
-### Issues corrected during review
+##### Issues corrected during review
 
 - Replaced the oversized text menu with a compact hamburger.
 - Increased dark metadata contrast, refined weights and spacing, and separated the six palettes more clearly.
@@ -102,11 +143,11 @@ The temporary item used for the lifecycle checks was removed. Pagination is cove
 - Fixed Search loading after routes with the same status filter and repeated home navigation leaving an empty loading view.
 - Kept Rediscover suggestions stable during unrelated metadata refreshes.
 
-## PWA and deployment limits
+#### PWA and deployment limits
 
 The manifest supports standalone launch, regular and maskable icons, an app name, start URL and shortcuts. Settings uses Chrome's native install event when it is available, with a manual Chrome-menu instruction otherwise. The service worker caches only a generic offline page; it does not cache private pages, API responses or authentication responses.
 
-Still required after account setup:
+Acceptance checks recorded at the time, before the later deployment:
 
 1. Publish behind Cloudflare Access with the configured GitHub identity provider and exact owner policy.
 2. Verify owner sign-in, rejection of another identity, signed-out API behavior and live D1 persistence.
