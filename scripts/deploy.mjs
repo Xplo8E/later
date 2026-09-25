@@ -7,14 +7,48 @@ if (!existsSync('deployment.config.json')) {
   process.exit(1);
 }
 const config = JSON.parse(readFileSync('deployment.config.json', 'utf8'));
-const fail = message => { console.error(message); process.exit(1); };
-if (!/^[a-f0-9]{32}$/i.test(config.accountId || '')) fail('Set the real Cloudflare account ID.');
-if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(config.databaseId || '')) fail('Set the real D1 database UUID.');
-if (!/^[a-z0-9][a-z0-9_-]{0,62}$/i.test(config.databaseName || '')) fail('Set a valid D1 database name.');
-if (!/^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(config.accessTeamDomain || '')) fail('Set your Cloudflare Access team domain.');
-if (typeof config.accessAudience !== 'string' || !config.accessAudience || /\s/.test(config.accessAudience) || config.accessAudience.startsWith('YOUR_')) fail('Set the Access application audience tag.');
-if (config.mcpAccessAudience !== undefined && (!/^[a-f0-9]{64}$/i.test(config.mcpAccessAudience) || config.mcpAccessAudience === config.accessAudience)) fail('Set a separate MCP Access application audience tag, or omit mcpAccessAudience to disable the connector.');
-if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(config.ownerEmail || '') || config.ownerEmail.endsWith('@example.com')) fail('Set the exact owner email allowed by the Access policy.');
+function fail(message) {
+  console.error(message);
+  process.exit(1);
+}
+
+// Account IDs are exactly 32 hexadecimal characters; uppercase hex is also accepted.
+if (!/^[a-f0-9]{32}$/i.test(config.accountId || '')) {
+  fail('Set the real Cloudflare account ID.');
+}
+// Check the UUID's 8-4-4-4-12 hex layout, not a particular UUID version.
+if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(config.databaseId || '')) {
+  fail('Set the real D1 database UUID.');
+}
+// Allow 1–63 letters/digits/underscores/hyphens, starting with a letter or digit.
+if (!/^[a-z0-9][a-z0-9_-]{0,62}$/i.test(config.databaseName || '')) {
+  fail('Set a valid D1 database name.');
+}
+// Require HTTPS and one lowercase team label under cloudflareaccess.com, with no path or trailing slash.
+if (!/^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(config.accessTeamDomain || '')) {
+  fail('Set your Cloudflare Access team domain.');
+}
+// Reject whitespace anywhere in the audience, as well as empty values and template placeholders.
+if (
+  typeof config.accessAudience !== 'string' ||
+  !config.accessAudience ||
+  /\s/.test(config.accessAudience) ||
+  config.accessAudience.startsWith('YOUR_')
+) {
+  fail('Set the Access application audience tag.');
+}
+// The connector audience must be exactly 64 hex characters and differ from the website audience.
+if (
+  config.mcpAccessAudience !== undefined &&
+  (!/^[a-f0-9]{64}$/i.test(config.mcpAccessAudience) || config.mcpAccessAudience === config.accessAudience)
+) {
+  fail('Set a separate MCP Access application audience tag, or omit mcpAccessAudience to disable the connector.');
+}
+// Basic email shape: nonempty parts around one @, a dot in the domain, and no whitespace.
+// This is a configuration sanity check, not full email validation; reject example.com placeholders too.
+if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(config.ownerEmail || '') || config.ownerEmail.endsWith('@example.com')) {
+  fail('Set the exact owner email allowed by the Access policy.');
+}
 const base = JSON.parse(readFileSync('wrangler.jsonc', 'utf8'));
 const production = {
   ...base,
@@ -22,26 +56,66 @@ const production = {
   workers_dev: false,
   preview_urls: false,
   routes: [{ pattern: 'later.xplo8e.com', custom_domain: true }],
-  d1_databases: [{ ...base.d1_databases[0], database_name: config.databaseName, database_id: config.databaseId }],
-  vars: { ...base.vars, APP_ORIGIN: 'https://later.xplo8e.com', ACCESS_TEAM_DOMAIN: config.accessTeamDomain, ACCESS_AUD: config.accessAudience, OWNER_EMAIL: config.ownerEmail.toLowerCase() },
+  d1_databases: [{
+    ...base.d1_databases[0],
+    database_name: config.databaseName,
+    database_id: config.databaseId,
+  }],
+  vars: {
+    ...base.vars,
+    APP_ORIGIN: 'https://later.xplo8e.com',
+    ACCESS_TEAM_DOMAIN: config.accessTeamDomain,
+    ACCESS_AUD: config.accessAudience,
+    OWNER_EMAIL: config.ownerEmail.toLowerCase(),
+  },
 };
+// Never carry local authentication or a stale connector audience into production.
 delete production.vars.LOCAL_DEV;
 delete production.vars.MCP_ACCESS_AUD;
-if (config.mcpAccessAudience) production.vars.MCP_ACCESS_AUD = config.mcpAccessAudience;
+if (config.mcpAccessAudience) {
+  production.vars.MCP_ACCESS_AUD = config.mcpAccessAudience;
+}
 writeFileSync('wrangler.production.json', JSON.stringify(production, null, 2) + '\n');
-if (prepareOnly) { console.log('Production configuration prepared. No remote changes made.'); process.exit(0); }
-const run = (command, args, extraEnv = {}) => {
-  const result = spawnSync(command, args, { stdio: 'inherit', env: { ...process.env, ...extraEnv } });
-  if (result.status !== 0) process.exit(result.status || 1);
-};
+if (prepareOnly) {
+  console.log('Production configuration prepared. No remote changes made.');
+  process.exit(0);
+}
+
+function run(command, args, extraEnv = {}) {
+  const result = spawnSync(command, args, {
+    stdio: 'inherit',
+    env: { ...process.env, ...extraEnv },
+  });
+  if (result.status !== 0) {
+    process.exit(result.status || 1);
+  }
+}
+
 const wrangler = 'node_modules/wrangler/bin/wrangler.js';
+const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 run(process.execPath, [wrangler, 'whoami']);
-run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build'], { LATER_PRODUCTION: '1' });
+run(npm, ['run', 'build'], { LATER_PRODUCTION: '1' });
+
+// Inspect the build output before tests, remote migrations or deployment can run.
 const compiled = readFileSync('dist/later/index.js', 'utf8');
-if (compiled.includes('LOCAL_DEV') || compiled.includes('local@localhost')) fail('Local authorization unexpectedly remains in the production bundle.');
+if (compiled.includes('LOCAL_DEV') || compiled.includes('local@localhost')) {
+  fail('Local authorization unexpectedly remains in the production bundle.');
+}
 const built = JSON.parse(readFileSync('dist/later/wrangler.json', 'utf8'));
-if (built.vars?.MCP_ACCESS_AUD !== config.mcpAccessAudience) fail('Compiled MCP audience does not match the reviewed production settings.');
-if (built.account_id !== config.accountId || built.d1_databases?.[0]?.database_id !== config.databaseId || built.workers_dev !== false || built.preview_urls !== false || built.vars?.LOCAL_DEV || built.vars?.ACCESS_AUD !== config.accessAudience || built.vars?.OWNER_EMAIL !== config.ownerEmail.toLowerCase()) fail('Compiled deployment configuration does not match the reviewed production settings.');
-run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['test']);
+if (built.vars?.MCP_ACCESS_AUD !== config.mcpAccessAudience) {
+  fail('Compiled MCP audience does not match the reviewed production settings.');
+}
+const deploymentMismatch =
+  built.account_id !== config.accountId ||
+  built.d1_databases?.[0]?.database_id !== config.databaseId ||
+  built.workers_dev !== false ||
+  built.preview_urls !== false ||
+  built.vars?.LOCAL_DEV ||
+  built.vars?.ACCESS_AUD !== config.accessAudience ||
+  built.vars?.OWNER_EMAIL !== config.ownerEmail.toLowerCase();
+if (deploymentMismatch) {
+  fail('Compiled deployment configuration does not match the reviewed production settings.');
+}
+run(npm, ['test']);
 run(process.execPath, [wrangler, 'd1', 'migrations', 'apply', 'DB', '--remote', '--config', 'wrangler.production.json']);
 run(process.execPath, [wrangler, 'deploy', '--config', 'dist/later/wrangler.json']);
