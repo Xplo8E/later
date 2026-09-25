@@ -8,7 +8,7 @@ import { metadataUrl, publicAddress, assertPublicDns } from '../worker/metadata.
 import { jsonBody, readLimited } from '../worker/http.ts';
 import type { Env } from '../worker/types.ts';
 
-const config = { APP_ORIGIN: 'https://later.xplo8e.com', ACCESS_TEAM_DOMAIN: 'https://test-team.cloudflareaccess.com', ACCESS_AUD: 'test-audience', OWNER_EMAIL: 'owner@example.com' } as Env;
+const config = { APP_ORIGIN: 'https://reading.example.com', ACCESS_TEAM_DOMAIN: 'https://test-team.cloudflareaccess.com', ACCESS_AUD: 'test-audience', OWNER_EMAIL: 'owner@example.com' } as Env;
 const session = { name: 'Owner', handle: 'owner', email: config.OWNER_EMAIL!, local: false };
 
 test('Access verifies signatures and binds issuer, audience, expiry and owner', async () => {
@@ -21,24 +21,27 @@ test('Access verifies signatures and binds issuer, audience, expiry and owner', 
   const token = await sign();
   await assert.rejects(verifyIdentity(`${token.slice(0, -20)}xxxxxxxxxxxxxxxxxxxx`, config, jwks), /session/);
   assert.throws(() => authConfig({} as Env), /configured/);
+  for (const origin of ['', 'http://reading.example.com', 'https://reading.example.com/', 'https://reading.example.com/path']) {
+    assert.throws(() => authConfig({ ...config, APP_ORIGIN: origin }), /APP_ORIGIN/);
+  }
 });
 
 test('production build ignores LOCAL_DEV and refuses unauthenticated requests', async t => {
   const mf = new Miniflare({ modules: true, scriptPath: 'dist/later/index.js', compatibilityDate: '2026-05-15', bindings: { ...config, LOCAL_DEV: 'true' } });
   t.after(() => mf.dispose());
   for (const path of ['/api/links', '/api/export', '/app', '/app/inbox', '/app/share?url=https%3A%2F%2Fexample.com', '/app/share/']) {
-    const response = await mf.dispatchFetch(`https://later.xplo8e.com${path}`);
+    const response = await mf.dispatchFetch(`https://reading.example.com${path}`);
     assert.equal(response.status, 401);
     assert.equal(response.headers.get('Cache-Control'), 'no-store');
     assert.equal(response.headers.get('X-Content-Type-Options'), 'nosniff');
     assert.equal(response.headers.get('X-Frame-Options'), 'DENY');
   }
-  const forged = await mf.dispatchFetch('https://later.xplo8e.com/api/links', { headers: { 'Cf-Access-Authenticated-User-Email': config.OWNER_EMAIL! } });
+  const forged = await mf.dispatchFetch('https://reading.example.com/api/links', { headers: { 'Cf-Access-Authenticated-User-Email': config.OWNER_EMAIL! } });
   assert.equal(forged.status, 401);
 });
 
 test('mutations require the exact application Origin', () => {
-  const req = (headers: HeadersInit = {}) => new Request('https://later.xplo8e.com/api/links', { method: 'POST', headers });
+  const req = (headers: HeadersInit = {}) => new Request('https://reading.example.com/api/links', { method: 'POST', headers });
   assert.doesNotThrow(() => requireSameOrigin(req({ Origin: config.APP_ORIGIN, 'Sec-Fetch-Site': 'same-origin' }), config, session));
   assert.throws(() => requireSameOrigin(req(), config, session), /must come from/);
   assert.throws(() => requireSameOrigin(req({ Origin: 'https://example.com' }), config, session), /must come from/);
@@ -60,6 +63,12 @@ test('input validation preserves meaningful URL differences and rejects invalid 
 
 test('metadata excludes non-public addresses and fails closed on DNS uncertainty', async () => {
   assert.equal(metadataUrl('https://developer.apple.com/documentation/').hostname, 'developer.apple.com');
+  for (const origin of ['https://reading.example.com', 'https://another.example.org']) {
+    assert.throws(() => metadataUrl(origin + '/app', origin), /preview/);
+    assert.throws(() => metadataUrl(origin.replace('https:', 'http:') + '/app', origin), /preview/);
+    assert.throws(() => metadataUrl(origin + './app', origin), /preview/);
+    assert.equal(metadataUrl('https://external.example.com/', origin).hostname, 'external.example.com');
+  }
   for (const value of ['http://localhost/', 'http://127.0.0.1/', 'http://[::1]/', 'http://service.internal/', 'https://example.com:8443/']) assert.throws(() => metadataUrl(value));
   for (const address of ['127.0.0.1', '10.0.0.1', '169.254.1.1', '192.168.0.1', '::1', 'fc00::1', '::ffff:127.0.0.1', '2001:db8::1']) assert.equal(publicAddress(address), false, address);
   assert.equal(publicAddress('1.1.1.1'), true);

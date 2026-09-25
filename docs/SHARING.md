@@ -24,7 +24,7 @@ These are automated and desktop-browser results, not physical Android share-inte
 
 ## Live verification
 
-- Deployed to `https://later.xplo8e.com`, Worker version `5819c6d9-f6bc-46c8-a7f6-305f65d79c9e`. The deployment script rebuilt, passed all 21 tests and found no new migrations.
+- Deployed to `[configured application origin]`, Worker version `[identifier omitted]`. The deployment script rebuilt, passed all 21 tests and found no new migrations.
 - The live manifest returns the configured share target. Public `/` returns 200. Signed-out `/app/share`, `/app/share/` and `/api/links` return Access redirects. The share redirect's return URL retains the original query parameters.
 - The authenticated production browser opened the share form with the correct URL and context. Saving a disposable link and edited note succeeded; reload preserved both. Metadata resolved to Example Domain. Sharing it again produced the duplicate warning and preserved the original note.
 - The disposable production item was deleted and the pre-existing library remained intact.

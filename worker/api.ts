@@ -25,7 +25,7 @@ export async function handleApi(request: Request, env: Env, ctx: Pick<ExecutionC
     const body = await jsonBody(request);
     const settings = await getSettings(env.DB);
     if (!settings.fetchMetadata) throw new HttpError(422, 'Automatic previews are switched off.');
-    return json(await fetchMetadata(savedUrl(body.url).href));
+    return json(await fetchMetadata(savedUrl(body.url).href, env.APP_ORIGIN));
   }
   if ((path === '/api/links' || path === '/api/search') && method === 'GET') return json(await listLinks(env.DB, url.searchParams));
   if (path === '/api/links' && method === 'POST') {
@@ -93,7 +93,7 @@ export async function handleApi(request: Request, env: Env, ctx: Pick<ExecutionC
       if (!settings.fetchMetadata) throw new HttpError(422, 'Turn on automatic metadata in Settings first.');
       const version = await env.DB.prepare("UPDATE links SET metadata_version=metadata_version+1,metadata_status='pending',metadata_started_at=? WHERE id=? RETURNING metadata_version").bind(new Date().toISOString(), id).first<{ metadata_version: number }>();
       if (!version) throw new HttpError(404, 'Link not found.');
-      ctx.waitUntil(enrichLink(env.DB, id, link.url, version.metadata_version, settings).catch(() => undefined));
+      ctx.waitUntil(enrichLink(env.DB, id, link.url, version.metadata_version, settings, env.APP_ORIGIN).catch(() => undefined));
       return json({ queued: true }, 202);
     }
   }

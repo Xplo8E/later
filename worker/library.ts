@@ -19,6 +19,6 @@ export async function captureLink(env: Env, ctx: Pick<ExecutionContext, 'waitUnt
     throw new HttpError(409, 'This link is already in your library.', { existingId: existing?.id });
   }
   const link = await getLink(env.DB, id);
-  if (settings.fetchMetadata) ctx.waitUntil(enrichLink(env.DB, id, parsed.href, 0, settings).catch(() => undefined));
+  if (settings.fetchMetadata) ctx.waitUntil(enrichLink(env.DB, id, parsed.href, 0, settings, env.APP_ORIGIN).catch(() => undefined));
   return link;
 }

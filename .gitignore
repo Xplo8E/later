@@ -5,7 +5,6 @@ dist/
 .dev.vars*
 !.dev.vars.example
 .env*
-!.env.example
 .sites-runtime/
 *.tsbuildinfo
 wrangler.production.json

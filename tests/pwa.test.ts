@@ -33,7 +33,7 @@ test('service worker caches only the generic offline page and passes private req
   let offline = false;
   const offlineResponse = new Response('offline page');
   runInNewContext(await readFile('public/sw.js', 'utf8'), {
-    self: { location: { origin: 'https://later.xplo8e.com' }, addEventListener: (name: string, handler: (event: any) => void) => { handlers[name] = handler; }, clients: { claim: async () => {} } },
+    self: { location: { origin: 'https://reading.example.com' }, addEventListener: (name: string, handler: (event: any) => void) => { handlers[name] = handler; }, clients: { claim: async () => {} } },
     URL, Response,
     Request: class { constructor(public url: string) {} },
     caches: {
@@ -51,7 +51,7 @@ test('service worker caches only the generic offline page and passes private req
   assert.deepEqual(deleted, ['later-offline-v0']);
   const request = (path: string, mode: string) => {
     let response: Promise<Response> | undefined;
-    handlers.fetch({ request: { url: `https://later.xplo8e.com${path}`, mode }, respondWith: (promise: Promise<Response>) => { response = promise; } });
+    handlers.fetch({ request: { url: `https://reading.example.com${path}`, mode }, respondWith: (promise: Promise<Response>) => { response = promise; } });
     return response;
   };
   assert.equal(request('/api/links', 'cors'), undefined);

@@ -14,7 +14,7 @@ test('D1 curated capture and additive edits preserve data under retries and conc
     await db.batch((await readFile(`migrations/${file}`, 'utf8')).split(';').map(sql => sql.trim()).filter(Boolean).map(sql => db.prepare(sql)));
   }
   await db.prepare("UPDATE settings SET value=json_set(value,'$.fetchMetadata',json('false'))").run();
-  const env = { DB: db } as unknown as Env;
+  const env = { DB: db, APP_ORIGIN: 'https://reading.example.com' } as unknown as Env;
   const pending: Promise<unknown>[] = [];
   const ctx = { waitUntil(promise: Promise<unknown>) { pending.push(promise); } };
   const save = (input: Parameters<typeof upsertLink>[2]) => upsertLink(env, ctx, input);

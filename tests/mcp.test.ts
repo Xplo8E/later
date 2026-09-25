@@ -7,7 +7,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
 test('MCP requires its own owner assertion and supports only bounded library operations', async t => {
-  const origin = 'https://later.xplo8e.com';
+  const origin = 'https://reading.example.com';
   const issuer = 'https://mcp-test.cloudflareaccess.com';
   const { publicKey, privateKey } = await generateKeyPair('RS256');
   const jwk = { ...await exportJWK(publicKey), kid: 'mcp-test' };
@@ -109,7 +109,7 @@ test('MCP stays disabled with a missing or reused website audience', async t => 
   for (const audience of ['', 'website-only']) {
     const mf = new Miniflare({ modules: true, scriptPath: 'dist/later/index.js', compatibilityDate: '2026-05-15', bindings: { MCP_ACCESS_AUD: audience, ACCESS_AUD: 'website-only' }, serviceBindings: { ASSETS: () => new WorkerResponse('public') } });
     t.after(() => mf.dispose());
-    assert.equal((await mf.dispatchFetch('https://later.xplo8e.com/mcp')).status, 503);
-    assert.equal((await mf.dispatchFetch('https://later.xplo8e.com/')).status, 200);
+    assert.equal((await mf.dispatchFetch('https://reading.example.com/mcp')).status, 503);
+    assert.equal((await mf.dispatchFetch('https://reading.example.com/')).status, 200);
   }
 });

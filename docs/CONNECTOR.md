@@ -1,8 +1,8 @@
 # Private ChatGPT connector
 
-Endpoint: `https://later.xplo8e.com/mcp` (stateless MCP Streamable HTTP).
+Endpoint: your configured `appOrigin` plus `/mcp` (stateless MCP Streamable HTTP).
 
-That is the reference deployment. For another installation, use `https://YOUR_LATER_HOST/mcp` after completing the [account setup and hostname prerequisite](DEPLOYMENT.md#before-you-start). Use your own Access application and AUD, not the identifiers in this document's historical verification sections.
+For example, `https://later.example.com/mcp`, after completing [deployment setup](DEPLOYMENT.md#before-you-start). Use your own Access application and AUD. Historical account/version identifiers have been omitted from this public record.
 
 ## Tools
 
@@ -77,7 +77,7 @@ Overrides deduplicate Miniflare on stable v4 and patch its pinned Sharp to 0.35.
 
 ## Additive-tool release verification, 2026-09-23
 
-- `npm run deploy` passed the production build and all **32 tests**, applied `0002_library_operations.sql` to the production D1 database, and deployed Worker version `aef41554-2f06-44fb-aedf-f9ba45da99f3`. MCP server version is `1.1.0`. No production reading items or fixtures were inserted.
+- `npm run deploy` passed the production build and all **32 tests**, applied `0002_library_operations.sql` to the production D1 database, and deployed Worker version `[identifier omitted]`. MCP server version is `1.1.0`. No production reading items or fixtures were inserted.
 - The SDK integration test discovers all eight tools from the compiled Worker and exercises the three new tools against disposable D1. Focused D1 tests cover concurrent upserts/appends/tag additions, duplicate request IDs, conflicting reuse, combined limits with no partial edits, retry after deletion, curated-field preservation and metadata failure.
 - Live anonymous checks: `/` is 200; `/app`, `/app/share`, `/api` and `/api/links` are 302; `/mcp` and `/mcp/child` are 401 with OAuth challenges and private/no-store headers. Invalid bearer is 401. Resource discovery is 200. The workers.dev address remains 404.
 - Refreshed Later in ChatGPT's plugin settings. The authenticated settings page visibly lists all **eight tools**, including `upsert_link`, `append_note` and `add_tags`, with the expected required request IDs and strict schemas. This is observed production tool discovery, not proof of successful production mutations.
@@ -100,8 +100,8 @@ Local tests use generated signing keys and mocked external identity/metadata ser
 
 Observed in production after owner approval:
 
-- Created Access application `07ac8333-29f4-47ce-a576-a968e6345ae4` with the existing exact-owner policy, GitHub-only login, path-scoped HTTP-only cookies and Managed OAuth. Saved settings show localhost/loopback callbacks disabled, the two ChatGPT callback patterns, 24-hour application/grant duration and default 15-minute access-token lifetime.
-- Deployed Worker version `d30ee2be-c295-43c3-a313-c5fe241bf90c` through the deployment script. All 23 tests passed again; no D1 migrations were pending. No production items or fixtures were inserted.
+- Created Access application `[identifier omitted]` with the existing exact-owner policy, GitHub-only login, path-scoped HTTP-only cookies and Managed OAuth. Saved settings show localhost/loopback callbacks disabled, the two ChatGPT callback patterns, 24-hour application/grant duration and default 15-minute access-token lifetime.
+- Deployed Worker version `[identifier omitted]` through the deployment script. All 23 tests passed again; no D1 migrations were pending. No production items or fixtures were inserted.
 - Anonymous `/mcp` and `/mcp/child` requests return 401 with `WWW-Authenticate`. An invalid bearer token also returns 401. Responses are private/no-store.
 - `/.well-known/cloudflare-access-protected-resource/mcp` returns 200, identifies the exact MCP resource and the configured Access authorization server. Server discovery returns 200 and advertises S256 PKCE, authorization-code/refresh grants, registration, token and revocation endpoints. Discovery is configuration evidence, not a completed grant or revocation test.
 - `/` remains public (200); `/app`, `/app/share`, `/api` and `/api/links` remain Access-protected (302). The alternate workers.dev URL returns 404.

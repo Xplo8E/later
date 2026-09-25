@@ -29,8 +29,8 @@ test('share parsing rejects invalid or oversized URLs and bounds shared notes', 
 
 test('reauthentication keeps edited URL and note on a fixed protected destination', () => {
   const draft = { url: 'https://example.com/?a=1&b=2#part', note: 'Keep https://example.com/?a=1&b=2#part\nUnicode: 日本語 & ? # +' };
-  const destination = new URL(shareSignInPath(draft), 'https://later.xplo8e.com');
-  assert.equal(destination.origin, 'https://later.xplo8e.com');
+  const destination = new URL(shareSignInPath(draft), 'https://reading.example.com');
+  assert.equal(destination.origin, 'https://reading.example.com');
   assert.equal(destination.pathname, '/app/share');
   assert.deepEqual(readSharedDraft(destination), { ...draft, notice: '' });
   assert.equal(destination.searchParams.has('redirect'), false);

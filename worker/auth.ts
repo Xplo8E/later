@@ -2,11 +2,17 @@ import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose';
 import type { Session } from '../shared/types';
 import type { Env } from './types';
 import { HttpError } from './http';
+import { applicationOrigin } from '../shared/site-config';
 
 const keySets = new Map<string, JWTVerifyGetKey>();
 export function authConfig(env: Env) {
   const issuer = env.ACCESS_TEAM_DOMAIN?.replace(/\/$/, '');
   if (!issuer || !/^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(issuer) || !env.ACCESS_AUD || !env.OWNER_EMAIL) throw new HttpError(503, 'Private access has not been configured yet.');
+  try {
+    applicationOrigin(env.APP_ORIGIN);
+  } catch {
+    throw new HttpError(503, 'APP_ORIGIN must be configured as the exact HTTPS application origin.');
+  }
   return { issuer, audience: env.ACCESS_AUD, email: env.OWNER_EMAIL.trim().toLowerCase() };
 }
 export async function verifyIdentity(token: string, env: Env, keys: JWTVerifyGetKey): Promise<Session> {
@@ -27,7 +33,7 @@ export async function verifyIdentity(token: string, env: Env, keys: JWTVerifyGet
 }
 export async function authenticate(request: Request, env: Env): Promise<Session> {
   // Vite substitutes DEV at build time. Production contains no local bypass.
-  if (import.meta.env?.DEV === true && env.LOCAL_DEV === 'true' && ['localhost', '127.0.0.1', '[::1]', 'terminal.local'].includes(new URL(request.url).hostname)) {
+  if (import.meta.env?.DEV === true && env.LOCAL_DEV === 'true' && ['localhost', '127.0.0.1', '[::1]'].includes(new URL(request.url).hostname)) {
     return { name: env.OWNER_NAME || 'Local developer', handle: env.OWNER_HANDLE || 'local', email: 'local@localhost', local: true };
   }
   const { issuer } = authConfig(env);

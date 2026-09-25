@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ownerWebsite } from '../shared/site-config';
 import { Check, LogIn, Menu as MenuIcon, Monitor, Search, X } from 'lucide-react';
 import * as Switch from '@radix-ui/react-switch';
 import type { LinkCounts, LinkPatch, SavedLink, Session, Settings } from '../shared/types';
@@ -23,6 +24,8 @@ const zeroCounts: LinkCounts = { inbox: 0, library: 0, finished: 0, archived: 0 
 const messageOf = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong. Try again.';
 
 export default function App() {
+  // The Worker supplies this public branding value on HTML responses, including login.
+  const ownerUrl = ownerWebsite(document.documentElement.dataset.ownerUrl);
   const installation = useInstallPrompt();
   const [path, setPath] = useState(location.pathname);
   const [sharedDraft, setSharedDraft] = useState(() => readSharedDraft(location));
@@ -30,6 +33,8 @@ export default function App() {
   const page: Page = rawPage in pageLabels ? rawPage as Page : 'inbox';
   const inApp = path === '/app' || path.startsWith('/app/');
   const [session, setSession] = useState<Session | null>(null);
+  const accountLabel = session?.handle || session?.name || 'Account';
+  const accountInitial = accountLabel.slice(0, 1).toUpperCase();
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [authError, setAuthError] = useState('');
   const [items, setItems] = useState<SavedLink[]>([]);
@@ -560,8 +565,8 @@ export default function App() {
             <section>
               <h2 className="eyebrow">Account</h2>
               <div className="account-setting">
-                <span className="avatar large">X</span>
-                <div><strong>{session.name}</strong><p>@{session.handle} · {session.local ? 'Local development' : 'Connected with GitHub'}</p></div>
+                <span className="avatar large">{accountInitial}</span>
+                <div><strong>{session.name}</strong><p>{session.handle && `@${session.handle} · `}{session.local ? 'Local development' : 'Connected with GitHub'}</p></div>
                 <a className="button signout" href={session.local ? '/' : '/cdn-cgi/access/logout'}>Sign out</a>
               </div>
             </section>
@@ -627,7 +632,7 @@ export default function App() {
     <div className="login-page">
       <header>
         <a className="wordmark" href="/">Later.</a>
-        <a className="muted" href="https://xplo8e.com" target="_blank" rel="noopener noreferrer">xplo8e.com ↗</a>
+        {ownerUrl && <a className="muted" href={ownerUrl.href} target="_blank" rel="noopener noreferrer">{ownerUrl.hostname} ↗</a>}
       </header>
       <main className="login-content">
         <h1>Your personal<br />internet library.</h1>
@@ -671,8 +676,8 @@ export default function App() {
       </nav>
       <div className="sidebar-footer">
         <a className={page === 'settings' ? 'current' : ''} href="/app/settings" onClick={event => { event.preventDefault(); navigate('settings'); }}>Settings</a>
-        <a href="https://xplo8e.com" target="_blank" rel="noopener noreferrer">xplo8e.com ↗</a>
-        <button className="account-chip" onClick={() => navigate('settings')}><span className="avatar">X</span><span>{session?.handle || 'Xplo8E'}</span></button>
+        {ownerUrl && <a href={ownerUrl.href} target="_blank" rel="noopener noreferrer">{ownerUrl.hostname} ↗</a>}
+        <button className="account-chip" onClick={() => navigate('settings')}><span className="avatar">{accountInitial}</span><span>{accountLabel}</span></button>
       </div>
     </aside>
     <main id="main-content" inert={mobileNav} className={`main-content page-${page} ${page === 'inbox' ? 'with-rail' : ''}`}>

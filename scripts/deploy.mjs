@@ -2,14 +2,59 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
 const prepareOnly = process.argv.includes('--prepare-only');
+const validateOnly = process.argv.includes('--validate-only');
 if (!existsSync('deployment.config.json')) {
   console.error('Create deployment.config.json from deployment.config.json.example. See docs/DEPLOYMENT.md.');
   process.exit(1);
 }
-const config = JSON.parse(readFileSync('deployment.config.json', 'utf8'));
 function fail(message) {
   console.error(message);
   process.exit(1);
+}
+
+let config;
+try {
+  config = JSON.parse(readFileSync('deployment.config.json', 'utf8'));
+} catch {
+  fail('deployment.config.json must contain valid JSON.');
+}
+if (!config || typeof config !== 'object' || Array.isArray(config)) {
+  fail('deployment.config.json must contain a configuration object.');
+}
+const fields = [
+  'appOrigin', 'accountId', 'databaseId', 'databaseName', 'accessTeamDomain',
+  'accessAudience', 'ownerEmail', 'mcpAccessAudience', 'ownerName', 'ownerHandle', 'ownerUrl',
+];
+if (Object.keys(config).some(key => !fields.includes(key))) {
+  fail('Unknown deployment configuration field. See deployment.config.json.example and docs/DEPLOYMENT.md.');
+}
+
+let appUrl;
+try {
+  appUrl = new URL(config.appOrigin);
+} catch {
+  fail('Set appOrigin to your exact HTTPS origin, without a path or trailing slash.');
+}
+// A Custom Domain uses a DNS hostname, not an IP, port, path or wildcard route.
+const dnsHostname = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
+if (appUrl.protocol !== 'https:' || appUrl.origin !== config.appOrigin || appUrl.port || !dnsHostname.test(appUrl.hostname)) {
+  fail('Set appOrigin to your exact HTTPS DNS origin, without credentials, a port, path or trailing slash.');
+}
+for (const key of ['ownerName', 'ownerHandle']) {
+  if (config[key] !== undefined && (typeof config[key] !== 'string' || !config[key].trim() || config[key].length > 100)) {
+    fail(`${key} must be a nonempty display string of at most 100 characters, or be omitted.`);
+  }
+}
+if (config.ownerUrl !== undefined) {
+  let ownerUrl;
+  try {
+    ownerUrl = new URL(config.ownerUrl);
+  } catch {
+    fail('ownerUrl must be an HTTPS URL, or be omitted.');
+  }
+  if (typeof config.ownerUrl !== 'string' || ownerUrl.protocol !== 'https:' || ownerUrl.username || ownerUrl.password || config.ownerUrl.length > 2048) {
+    fail('ownerUrl must be an HTTPS URL without credentials, or be omitted.');
+  }
 }
 
 // Account IDs are exactly 32 hexadecimal characters; uppercase hex is also accepted.
@@ -55,7 +100,7 @@ const production = {
   account_id: config.accountId,
   workers_dev: false,
   preview_urls: false,
-  routes: [{ pattern: 'later.xplo8e.com', custom_domain: true }],
+  routes: [{ pattern: appUrl.hostname, custom_domain: true }],
   d1_databases: [{
     ...base.d1_databases[0],
     database_name: config.databaseName,
@@ -63,15 +108,21 @@ const production = {
   }],
   vars: {
     ...base.vars,
-    APP_ORIGIN: 'https://later.xplo8e.com',
+    APP_ORIGIN: config.appOrigin,
     ACCESS_TEAM_DOMAIN: config.accessTeamDomain,
     ACCESS_AUD: config.accessAudience,
     OWNER_EMAIL: config.ownerEmail.toLowerCase(),
+    OWNER_NAME: config.ownerName || 'Your account',
+    OWNER_HANDLE: config.ownerHandle || '',
   },
 };
 // Never carry local authentication or a stale connector audience into production.
 delete production.vars.LOCAL_DEV;
 delete production.vars.MCP_ACCESS_AUD;
+delete production.vars.OWNER_URL;
+if (config.ownerUrl) {
+  production.vars.OWNER_URL = config.ownerUrl;
+}
 if (config.mcpAccessAudience) {
   production.vars.MCP_ACCESS_AUD = config.mcpAccessAudience;
 }
@@ -93,7 +144,7 @@ function run(command, args, extraEnv = {}) {
 
 const wrangler = 'node_modules/wrangler/bin/wrangler.js';
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-run(process.execPath, [wrangler, 'whoami']);
+if (!validateOnly) run(process.execPath, [wrangler, 'whoami']);
 run(npm, ['run', 'build'], { LATER_PRODUCTION: '1' });
 
 // Inspect the build output before tests, remote migrations or deployment can run.
@@ -107,15 +158,27 @@ if (built.vars?.MCP_ACCESS_AUD !== config.mcpAccessAudience) {
 }
 const deploymentMismatch =
   built.account_id !== config.accountId ||
+  built.name !== production.name ||
+  JSON.stringify(built.routes) !== JSON.stringify(production.routes) ||
   built.d1_databases?.[0]?.database_id !== config.databaseId ||
+  built.d1_databases?.[0]?.database_name !== config.databaseName ||
   built.workers_dev !== false ||
   built.preview_urls !== false ||
   built.vars?.LOCAL_DEV ||
+  built.vars?.APP_ORIGIN !== config.appOrigin ||
+  built.vars?.ACCESS_TEAM_DOMAIN !== config.accessTeamDomain ||
+  built.vars?.OWNER_NAME !== production.vars.OWNER_NAME ||
+  built.vars?.OWNER_HANDLE !== production.vars.OWNER_HANDLE ||
+  built.vars?.OWNER_URL !== config.ownerUrl ||
   built.vars?.ACCESS_AUD !== config.accessAudience ||
   built.vars?.OWNER_EMAIL !== config.ownerEmail.toLowerCase();
 if (deploymentMismatch) {
   fail('Compiled deployment configuration does not match the reviewed production settings.');
 }
 run(npm, ['test']);
+if (validateOnly) {
+  console.log('Production build and configuration validated. No remote changes made.');
+  process.exit(0);
+}
 run(process.execPath, [wrangler, 'd1', 'migrations', 'apply', 'DB', '--remote', '--config', 'wrangler.production.json']);
 run(process.execPath, [wrangler, 'deploy', '--config', 'dist/later/wrangler.json']);

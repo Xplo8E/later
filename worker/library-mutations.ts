@@ -94,7 +94,7 @@ export async function upsertLink(env: Env, ctx: Pick<ExecutionContext, 'waitUnti
     throw new HttpError(400, 'The merged item would exceed 4000 note characters or 12 tags. Nothing was changed.');
   });
   if (!result.replayed && result.outcome === 'created' && settings.fetchMetadata) {
-    ctx.waitUntil(enrichLink(env.DB, result.link.id, url.href, 0, settings).catch(() => undefined));
+    ctx.waitUntil(enrichLink(env.DB, result.link.id, url.href, 0, settings, env.APP_ORIGIN).catch(() => undefined));
   }
   return result;
 }

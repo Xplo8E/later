@@ -12,7 +12,7 @@ test('D1-backed capture, lifecycle, literal search, export, and atomic duplicate
   const db = await mf.getD1Database('DB');
   const schema = await readFile('migrations/0001_initial.sql', 'utf8');
   await db.batch(schema.split(';').map(sql => sql.trim()).filter(Boolean).map(sql => db.prepare(sql)));
-  const env = { DB: db, APP_ORIGIN: 'https://later.xplo8e.com' } as unknown as Env;
+  const env = { DB: db, APP_ORIGIN: 'https://reading.example.com' } as unknown as Env;
   const session = { name: 'Test', handle: 'test', email: 'test@example.com', local: false };
   const pending: Promise<unknown>[] = [];
   const context = { waitUntil(promise: Promise<unknown>) { pending.push(promise); } };

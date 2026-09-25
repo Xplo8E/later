@@ -1,8 +1,8 @@
 # Later
 
-A private, single-owner internet library for Vinay. Save a URL with a note, organize it when convenient, and rediscover older unfinished links.
+A private, single-owner internet library. Save a URL with a note, organize it when convenient, and rediscover older unfinished links.
 
-Built with React, TypeScript, Vite, Cloudflare Workers, D1, and Cloudflare Access with GitHub. The production target is `https://later.xplo8e.com`.
+Built with React, TypeScript, Vite, Cloudflare Workers, D1, and Cloudflare Access with GitHub. Deploy on your own HTTPS subdomain using one local configuration file.
 
 ## Run locally
 
@@ -15,7 +15,7 @@ npm run db:migrate
 npm run dev
 ```
 
-Open the development server at port 4173. The explicit `LOCAL_DEV=true` flag is accepted only by a development build on loopback or the supported local preview host. The production build removes that authorization path.
+Open the development server at port 4173 on localhost. The explicit `LOCAL_DEV=true` flag is accepted only by a development build on loopback. The production build removes that authorization path.
 
 To add the optional design examples to the local database:
 
@@ -62,15 +62,18 @@ Follow [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). A real Cloudflare account, D1 d
 
 Using your own accounts? The guide covers Zero Trust team setup, GitHub OAuth registration, the exact-owner policy, and where to find every deployment config value. The optional ChatGPT connector has a [separate setup guide](docs/CONNECTOR.md#setup).
 
-This checkout still targets `later.xplo8e.com` in its deployment script. `deployment.config.json` does not currently select a hostname. Read the [custom-domain limitation](docs/DEPLOYMENT.md#before-you-start) before deploying a fork; changing only the account values will not retarget it.
+Set `appOrigin` in `deployment.config.json` to your exact HTTPS origin, such as `https://later.example.com`. The script derives the Custom Domain and Worker origin from it. No source edits are required. Optional `ownerName`, `ownerHandle` and `ownerUrl` preserve your preferred display identity and site link; they do not authorize access.
+
+The tracked config defaults/examples intentionally show the original owner's domain, email and display values. Replace those as well as the account/Access placeholders before deploying your own instance. Application code does not depend on those reference values.
 
 ```bash
 cp deployment.config.json.example deployment.config.json
-# Fill in the real account, database and Access application values.
+# Fill in your origin, account, database and Access application values.
 npm run deploy -- --prepare-only
+npm run deploy -- --validate-only
 ```
 
-The preparation command writes the production configuration without making remote changes. After authentication and Access setup, `npm run deploy` builds, tests, applies D1 migrations, and deploys the compiled Worker and assets.
+Preparation writes the production configuration without remote changes. Validation also builds and tests it without logging in, migrating or deploying. After authentication and Access setup, `npm run deploy` builds, tests, applies D1 migrations, and deploys the compiled Worker and assets. See the [portability audit](docs/OPEN-SOURCE-AUDIT.md) for publication checks and Git-history limits.
 
 ## Project map
 
