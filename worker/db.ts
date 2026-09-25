@@ -38,14 +38,21 @@ export async function listLinks(db: D1Database, params: URLSearchParams): Promis
   if (search.length > 200 || tag.length > 40) throw new HttpError(400, 'Search or tag is too long.');
   const clauses: string[] = [];
   const bindings: (string | number)[] = [];
-  if (status) { clauses.push('l.status = ?'); bindings.push(status); }
-  if (tag) { clauses.push('EXISTS(SELECT 1 FROM link_tags WHERE link_id = l.id AND tag_name = ? COLLATE NOCASE)'); bindings.push(tag); }
+  if (status) {
+    clauses.push('l.status = ?');
+    bindings.push(status);
+  }
+  if (tag) {
+    clauses.push('EXISTS(SELECT 1 FROM link_tags WHERE link_id = l.id AND tag_name = ? COLLATE NOCASE)');
+    bindings.push(tag);
+  }
   // AND individual literal terms, including punctuation. No SQL or FTS query language is accepted.
   for (const term of search.split(/\s+/).filter(Boolean).slice(0, 12)) {
     const literal = `%${term.replace(/[\\%_]/g, '\\$&')}%`;
     clauses.push("(l.title LIKE ? ESCAPE '\\' OR l.note LIKE ? ESCAPE '\\' OR l.url LIKE ? ESCAPE '\\' OR EXISTS(SELECT 1 FROM link_tags WHERE link_id = l.id AND tag_name LIKE ? ESCAPE '\\'))");
     bindings.push(literal, literal, literal, literal);
   }
+  // Totals cover the whole filtered list; only page queries include the cursor below.
   const baseWhere = clauses.length ? ` WHERE ${clauses.join(' AND ')}` : '';
   const orderField = status === 'finished' ? 'finished_at' : 'saved_at';
   const cursor = params.get('cursor');
@@ -53,7 +60,11 @@ export async function listLinks(db: D1Database, params: URLSearchParams): Promis
   if (cursor) {
     if (cursor.length > 512) throw new HttpError(400, 'Invalid cursor.');
     let parts: unknown;
-    try { parts = JSON.parse(atob(cursor)); } catch { throw new HttpError(400, 'Invalid cursor.'); }
+    try {
+      parts = JSON.parse(atob(cursor));
+    } catch {
+      throw new HttpError(400, 'Invalid cursor.');
+    }
     if (!Array.isArray(parts) || parts.length !== 2 || parts.some(value => typeof value !== 'string') || !Number.isFinite(Date.parse(parts[0]))) throw new HttpError(400, 'Invalid cursor.');
     clauses.push(`(l.${orderField} < ? OR (l.${orderField} = ? AND l.id < ?))`);
     pageBindings.push(parts[0], parts[0], parts[1]);
@@ -69,15 +80,30 @@ export async function listLinks(db: D1Database, params: URLSearchParams): Promis
   for (const row of countRows.results) counts[row.status] = row.count;
   const items = rows.results.slice(0, 50).map(toLink);
   const last = rows.results[49];
-  return { items, total: total?.count || 0, counts, tags: tagRows.results.map(row => row.name), nextCursor: rows.results.length > 50 ? btoa(JSON.stringify([last[orderField], last.id])) : null };
+  return {
+    items,
+    total: total?.count || 0,
+    counts,
+    tags: tagRows.results.map(row => row.name),
+    nextCursor: rows.results.length > 50 ? btoa(JSON.stringify([last[orderField], last.id])) : null,
+  };
 }
 export async function patchLink(db: D1Database, id: string, patch: LinkPatch) {
   await getLink(db, id);
   const updates = ['updated_at = ?'];
   const values: (string | number | null)[] = [new Date().toISOString()];
-  if (patch.title !== undefined) { updates.push('title = ?', 'title_edited = 1'); values.push(patch.title); }
-  if (patch.note !== undefined) { updates.push('note = ?'); values.push(patch.note); }
-  if (patch.status) { updates.push('status = ?', "finished_at = CASE WHEN ? = 'finished' THEN COALESCE(finished_at,?) ELSE NULL END"); values.push(patch.status, patch.status, new Date().toISOString()); }
+  if (patch.title !== undefined) {
+    updates.push('title = ?', 'title_edited = 1');
+    values.push(patch.title);
+  }
+  if (patch.note !== undefined) {
+    updates.push('note = ?');
+    values.push(patch.note);
+  }
+  if (patch.status) {
+    updates.push('status = ?', "finished_at = CASE WHEN ? = 'finished' THEN COALESCE(finished_at,?) ELSE NULL END");
+    values.push(patch.status, patch.status, new Date().toISOString());
+  }
   if (patch.tags !== undefined) updates.push('tags_edited = 1');
   const statements = [db.prepare(`UPDATE links SET ${updates.join(', ')} WHERE id = ?`).bind(...values, id)];
   if (patch.tags !== undefined) {

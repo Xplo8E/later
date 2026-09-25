@@ -12,10 +12,18 @@ export function authConfig(env: Env) {
 export async function verifyIdentity(token: string, env: Env, keys: JWTVerifyGetKey): Promise<Session> {
   const { issuer, audience, email } = authConfig(env);
   try {
-    const { payload } = await jwtVerify(token, keys, { issuer, audience, algorithms: ['RS256'], requiredClaims: ['sub', 'email', 'exp', 'iat'], clockTolerance: 5 });
+    const { payload } = await jwtVerify(token, keys, {
+      issuer,
+      audience,
+      algorithms: ['RS256'],
+      requiredClaims: ['sub', 'email', 'exp', 'iat'],
+      clockTolerance: 5,
+    });
     if (typeof payload.email !== 'string' || payload.email.toLowerCase() !== email || typeof payload.sub !== 'string' || !payload.sub) throw new Error('Owner mismatch');
     return { name: env.OWNER_NAME || 'Your account', handle: env.OWNER_HANDLE || '', email: payload.email, local: false };
-  } catch { throw new HttpError(401, 'Your session is missing or expired. Sign in again.'); }
+  } catch {
+    throw new HttpError(401, 'Your session is missing or expired. Sign in again.');
+  }
 }
 export async function authenticate(request: Request, env: Env): Promise<Session> {
   // Vite substitutes DEV at build time. Production contains no local bypass.
@@ -27,7 +35,10 @@ export async function authenticate(request: Request, env: Env): Promise<Session>
   const token = request.headers.get('Cf-Access-Jwt-Assertion');
   if (!token || token.length > 16_384) throw new HttpError(401, 'Your session is missing or expired. Sign in again.');
   let keys = keySets.get(issuer);
-  if (!keys) { keys = createRemoteJWKSet(new URL(`${issuer}/cdn-cgi/access/certs`), { timeoutDuration: 5000, cooldownDuration: 30_000 }); keySets.set(issuer, keys); }
+  if (!keys) {
+    keys = createRemoteJWKSet(new URL(`${issuer}/cdn-cgi/access/certs`), { timeoutDuration: 5000, cooldownDuration: 30_000 });
+    keySets.set(issuer, keys);
+  }
   return verifyIdentity(token, env, keys);
 }
 export function requireSameOrigin(request: Request, env: Env, session: Session) {

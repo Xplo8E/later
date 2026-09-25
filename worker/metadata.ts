@@ -16,13 +16,23 @@ export function metadataUrl(value: string): URL {
   return url;
 }
 export function publicAddress(value: string) {
-  try { const address = ipaddr.parse(value); return address.range() === 'unicast'; } catch { return false; }
+  try {
+    const address = ipaddr.parse(value);
+    return address.range() === 'unicast';
+  } catch {
+    return false;
+  }
 }
 export async function assertPublicDns(host: string, signal: AbortSignal, doFetch: Fetch = fetch) {
   const answers = await Promise.all(['A', 'AAAA'].map(async type => {
-    const endpoint = new URL('https://cloudflare-dns.com/dns-query'); endpoint.searchParams.set('name', host); endpoint.searchParams.set('type', type);
+    const endpoint = new URL('https://cloudflare-dns.com/dns-query');
+    endpoint.searchParams.set('name', host);
+    endpoint.searchParams.set('type', type);
     const response = await doFetch(endpoint.href, { headers: { Accept: 'application/dns-json' }, redirect: 'manual', signal });
-    if (!response.ok) { await response.body?.cancel(); throw new HttpError(422, 'Could not check this host.'); }
+    if (!response.ok) {
+      await response.body?.cancel();
+      throw new HttpError(422, 'Could not check this host.');
+    }
     const data = JSON.parse(await readLimited(response, 32_768)) as { Status: number; Answer?: { type: number; data: string }[] };
     if (data.Status !== 0) throw new HttpError(422, 'Could not resolve this host.');
     return (data.Answer || []).filter(answer => answer.type === 1 || answer.type === 28).map(answer => answer.data);
@@ -34,7 +44,8 @@ function decode(value: string, max: number) {
   const entities: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
   return value.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos|nbsp);/gi, (match, entity: string) => {
     if (entity[0] !== '#') return entities[entity.toLowerCase()] || match;
-    const point = parseInt(entity.slice(entity[1].toLowerCase() === 'x' ? 2 : 1), entity[1].toLowerCase() === 'x' ? 16 : 10);
+    const hexadecimal = entity[1].toLowerCase() === 'x';
+    const point = parseInt(entity.slice(hexadecimal ? 2 : 1), hexadecimal ? 16 : 10);
     return point > 0 && point <= 0x10ffff && !(point >= 0xd800 && point <= 0xdfff) ? String.fromCodePoint(point) : '';
   }).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
 }
@@ -46,10 +57,17 @@ export async function fetchMetadata(input: string, doFetch: Fetch = fetch): Prom
     let url = metadataUrl(input);
     let response: Response | undefined;
     for (let redirects = 0; redirects <= 3; redirects++) {
+      // Every redirect target goes through the same address and DNS checks.
       await assertPublicDns(url.hostname, controller.signal, doFetch);
-      response = await doFetch(url.href, { method: 'GET', redirect: 'manual', signal: controller.signal, headers: { Accept: 'text/html,application/xhtml+xml', 'User-Agent': 'LaterMetadata/1.0' } });
+      response = await doFetch(url.href, {
+        method: 'GET',
+        redirect: 'manual',
+        signal: controller.signal,
+        headers: { Accept: 'text/html,application/xhtml+xml', 'User-Agent': 'LaterMetadata/1.0' },
+      });
       if ([301, 302, 303, 307, 308].includes(response.status)) {
-        const next = response.headers.get('location'); await response.body?.cancel();
+        const next = response.headers.get('location');
+        await response.body?.cancel();
         if (!next || redirects === 3) throw new HttpError(422, 'Too many redirects.');
         const target = metadataUrl(new URL(next, url).href);
         if (url.protocol === 'https:' && target.protocol !== 'https:') throw new HttpError(422, 'Insecure preview redirect.');
@@ -58,25 +76,63 @@ export async function fetchMetadata(input: string, doFetch: Fetch = fetch): Prom
       }
       break;
     }
-    if (!response?.ok) { await response?.body?.cancel(); throw new HttpError(422, 'The site did not provide a preview.'); }
+    if (!response?.ok) {
+      await response?.body?.cancel();
+      throw new HttpError(422, 'The site did not provide a preview.');
+    }
     const contentType = response.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
-    if (!['text/html', 'application/xhtml+xml'].includes(contentType || '')) { await response.body?.cancel(); throw new HttpError(422, 'This page does not provide an HTML preview.'); }
+    if (!['text/html', 'application/xhtml+xml'].includes(contentType || '')) {
+      await response.body?.cancel();
+      throw new HttpError(422, 'This page does not provide an HTML preview.');
+    }
     const html = await readLimited(response, 524_288);
     let title = '';
     const values: Record<string, string> = {};
-    const rewriter = new HTMLRewriter().on('title', { text(chunk) { if (title.length < 2000) title += chunk.text; } }).on('meta', { element(element) {
-      const key = (element.getAttribute('property') || element.getAttribute('name') || '').toLowerCase();
-      if (['og:title', 'og:description', 'og:image', 'description', 'og:type'].includes(key) && !values[key]) values[key] = (element.getAttribute('content') || '').slice(0, 4096);
-    } });
+    const rewriter = new HTMLRewriter()
+      .on('title', {
+        text(chunk) {
+          if (title.length < 2000) title += chunk.text;
+        },
+      })
+      .on('meta', {
+        element(element) {
+          const key = (element.getAttribute('property') || element.getAttribute('name') || '').toLowerCase();
+          // Keep the first nonempty value for each supported metadata field.
+          if (['og:title', 'og:description', 'og:image', 'description', 'og:type'].includes(key) && !values[key]) {
+            values[key] = (element.getAttribute('content') || '').slice(0, 4096);
+          }
+        },
+      });
     await rewriter.transform(new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })).arrayBuffer();
     let imageUrl: string | null = null;
     if (values['og:image']) {
-      try { const image = metadataUrl(new URL(decode(values['og:image'], 4096), url).href); if (image.protocol === 'https:') { await assertPublicDns(image.hostname, controller.signal, doFetch); imageUrl = image.href; } } catch { /* Images are optional. */ }
+      try {
+        const image = metadataUrl(new URL(decode(values['og:image'], 4096), url).href);
+        if (image.protocol === 'https:') {
+          await assertPublicDns(image.hostname, controller.signal, doFetch);
+          imageUrl = image.href;
+        }
+      } catch {
+        // Images are optional; an unusable image must not discard the page metadata.
+      }
     }
-    const kind = inferKind(url);
-    return { title: decode(values['og:title'] || title, 500) || url.hostname, description: decode(values['og:description'] || values.description || '', 1500), domain: new URL(input).hostname, imageUrl, kind: kind !== 'website' ? kind : values['og:type'] === 'article' ? 'article' : 'website' };
-  } catch (error) { if (error instanceof HttpError) throw error; throw new HttpError(422, 'Preview unavailable. The link can still be saved.'); }
-  finally { clearTimeout(timer); }
+    let kind = inferKind(url);
+    if (kind === 'website' && values['og:type'] === 'article') {
+      kind = 'article';
+    }
+    return {
+      title: decode(values['og:title'] || title, 500) || url.hostname,
+      description: decode(values['og:description'] || values.description || '', 1500),
+      domain: new URL(input).hostname,
+      imageUrl,
+      kind,
+    };
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
+    throw new HttpError(422, 'Preview unavailable. The link can still be saved.');
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export function suggestedTags(title: string): string[] {
